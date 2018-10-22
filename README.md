@@ -1,6 +1,6 @@
 This is the working area for MLS implementations.
 
-## Upcomming events
+## Upcoming events
 
 ### IETF 103 Hackathon in Bangkok
 Date Nov 3rd & 4th, 2018
