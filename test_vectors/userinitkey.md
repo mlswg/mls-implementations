@@ -10,7 +10,7 @@ struct {
 } UserInitKey;
 ```
 
-###Constants
+### Constants
 
 ```
 // CipherSuite
@@ -21,7 +21,7 @@ const uint16 AES128GCM_CURVE25519_SHA256 = 1;
 const uint16 ED25519 = 0;
 ```
 
-###Parameters
+### Parameters
 
 ```
 cipher_suites = [AES128GCM_CURVE25519_SHA256];
