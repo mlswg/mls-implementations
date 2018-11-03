@@ -17,7 +17,7 @@ For more real-time communication specific to implementation details, you can joi
 
 [List of existing implementations](https://github.com/mlswg/mls-implementations/blob/master/implementation_list.md)
 
-[Tree math test vectors](https://github.com/mlswg/mls-implementations/blob/master/treemath/README.md)
+[Test vectors](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/README.md)
 
 
 
