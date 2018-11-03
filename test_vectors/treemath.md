@@ -10,9 +10,10 @@ range = [0, 254];
 
 for i in range
 {
-	test_vector.add(tree_function(i, size));
+	test_vector.add(tree_function(i[, size]));
 }
 ```
+Please note that `size` is the size of the tree, not necessarily the number of elements in the test vector.
 
 The test vectors are encoded in the following format: 
 
@@ -31,6 +32,9 @@ struct {
 	vector y<0..255>;
 } vector2d;
 ```
+
+All test vectors are aggregated
+
 
 ## root()
 
