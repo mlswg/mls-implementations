@@ -1,0 +1,64 @@
+## ECIES
+
+Bob has published a public key. Alice uses that to do DH key agreement with his key by using an ephemeral DH keypair on her side.
+
+Parameters:
+
+```
+Cipher suite: AES128GCM-CURVE25519-SHA256
+```
+
+### ECKEM
+
+Input (Alice):
+
+```
+DH private key:
+5D43BE92D01AAD353B9B4B1DC32E6C828B00DD20B46BDEB98976E13D881DC39A
+
+DH public key:
+626848EAB66583E12FB94577D2399D32B1EA13D2E3B9EC07C9D54778F9E27910
+
+Cleartext:
+00010203040506070809
+```
+
+Input (Bob):
+
+```
+DH private key:
+FF629FC551E4B0657172E992AC543E89E0EB12EB11A8B413F140D88808B0EC40
+
+DH public key:
+A724AB6198B4D07A3E1E4FD788EF73BF8C0E8120AC7DA4C228948D408943D774
+```
+
+Output:
+
+```
+Ciphertext:
+8127F756973BF391AE3B0891332864D367787406F306C7DD3175
+```
+
+### Derive secrets
+
+The `derive_ecies_secrets()` function is used to derive a key and a nonce from a shared secret.
+
+
+Input:
+
+```
+shared_secret (32 bytes):
+626409A3109BC704CA0B39BBC7F9CB3748904509E5A4564B66B2A10B315BC6D5
+
+```
+
+Output:
+
+```
+AES128 key:
+2BF6DE51B5C8CD8E45EA63B4B4D997DF
+
+Nonce:
+E66BE7FD5C91BB999D7903D9
+```
