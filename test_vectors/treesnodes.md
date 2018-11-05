@@ -7,17 +7,11 @@ Curve25519
 Structs:
 
 ```
-struct NodeSecret {
-   uint8 bytes<0..31>;
-}
+opaque NodeSecret[32];
 
-struct PrivateKey {
-    uint8 bytes<0..31>
-}
+opaque PrivateKey[32];
 
-struct PublicKey {
-    uint8 bytes<0..31>
-}
+opaque PublicKey[32];
 ```
 
 Input:
