@@ -21,7 +21,7 @@ Functions that return an integer
 
 ```
 struct {
-	uint8 x<0..2^32-1>;
+	uint32 x<0..2^32-1>;
 } vector;
 ```
 
