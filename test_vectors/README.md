@@ -32,8 +32,39 @@ are as defined in [the specification](https://github.com/mlswg/mls-protocol/blob
 Your implementation's tree math library should be able to reproduce
 these values.
 
+## Resolution
+
+File: [resolution.bin](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/resolution.bin)
+
+```
+uint8_t Resolution<0..255>;
+Resolution ResolutionCase<0..2^16-1>;
+
+struct {
+  uint32_t n_leaves;
+  ResolutionCase cases<0..2^32-1>;
+} ResolutionTestVectors;
+```
+
+These vectors represent the output of the resolution algorithm on
+all configurations of a tree with `n_leaves` leaves.  
+
+* The `cases` vector should have `2^(2*n_leaves - 1)` entries
+  * The entry at index `t` represents the set of resolutions for the
+    tree with a blank / filled patter matching the bit pattern of the
+    integer `t`.  
+  * If `(t >> n) == 1`, then node `n` in the tree is
+    filled; otherwise it is blank.
+* Each `ResolutionCase` vector contains the resolutions of every
+  node in the tree, in order
+* Thus `cases[t][i]` contains the resolution of node `i` in tree
+  `t`
+
+Your implementation should be able to reproduce these values.
 
 ## Cryptographic Functions
+
+File: [crypto.bin](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/crypto.bin)
 
 ```
 struct {
