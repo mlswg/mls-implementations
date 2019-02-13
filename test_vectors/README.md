@@ -54,8 +54,6 @@ struct {
 
   CryptoCase case_p256_p256;
   CryptoCase case_x25519_ed25519;
-  CryptoCase case_p521_p521;
-  CryptoCase case_x448_ed448;
 } CryptoTestVectors;
 ```
 
@@ -119,8 +117,6 @@ struct {
 
   MessagesCase case_p256_p256;
   MessagesCase case_x25519_ed25519;
-  MessagesCase case_p521_p521;
-  MessagesCase case_x448_ed448;
 } MessagesTestVectors;
 ```
 
@@ -129,13 +125,11 @@ The elements of the struct have the following meanings:
 * The first several fields contain the values used to construct the
   example messages.
 * `user_init_key_all` contains a UserInitKey that offers all four
-  ciphersuites.  It is validly signed with an Ed448 key.
+  ciphersuites.  It is validly signed with an Ed25519 key.
 * The remaining cases each test message processing for a given
   ciphersuite:
   * `case_p256_p256` uses P256 for DH and ECDSA-P256 for signing
   * `case_x25519_ed25519` uses X25519 for DH and Ed25519 for signing
-  * `case_p521_p521` uses P521 for DH and ECDSA-P521 for signing
-  * `case_x448_ed448` uses X448 for DH and Ed448 for signing
 * In each case:
   * `user_init_key` contains a UserInitKey offering only the
     indicated ciphersuite, validly signed with the corresponding
@@ -189,8 +183,6 @@ struct {
 
   SessionCase case_p256_p256;
   SessionCase case_x25519_ed25519;
-  SessionCase case_p521_p521;
-  SessionCase case_x448_ed448;
 } SessionTestVectors;
 ```
 
