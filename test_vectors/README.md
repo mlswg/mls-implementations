@@ -85,6 +85,50 @@ the indicated ciphersuites.  The following functions are tested:
 
 Your implementation should be able to reproduce these values.
 
+## Key Schedule
+
+File: [key_schedule.bin](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/key_schedule.bin)
+
+```
+struct {
+  opaque update_secret;
+  opaque epoch_secret;
+  opaque application_secret;
+  opaque confirmation_key;
+  opaque init_secret;
+} KeyScheduleEpoch;
+
+struct {
+  CipherSuite suite;
+  Epoch epochs<0..2^16-1>;
+} KeyScheduleCase;
+
+struct {
+  uint32_t n_epochs;
+  opaque base_group_state<0..2^32-1>;
+
+  KeyScheduleCase case_p256;
+  KeyScheduleCase case_x25519;
+} KeyScheduleTestVectors;
+```
+
+For each ciphersuite, the `KeyScheduleTestVectors` struct provides a
+`KeyScheduleCase` that describes the outputs of the MLS key schedule
+over the course of several epochs.
+
+* The `init_secret` input to the first stage of the key schedule is
+  the all-zero vector of length `Hash.length` for the hash indicated
+  by the ciphersuite.
+* For future epochs, the `init_secret` is the value output at the
+  previous stage of the key schedule.
+* The initial `GroupState` object input to the key schedule should
+  be deserialized from the `base_group_state` object.
+* For each epoch, the `epoch` field of the GroupState object is
+  incremented before being provided to the key schedule.
+
+For each epoch, given inputs as described above, your implementation
+should replacate the `epoch_secret`, `application_secret`,
+`confirmation_key`, and `init_secret` outputs of the key schedule.
 
 ## Message Parsing and Serialization
 
