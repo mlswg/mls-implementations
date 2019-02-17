@@ -113,13 +113,6 @@ the indicated ciphersuites.  The following functions are tested:
 
 * `HKDF-Extract`
 * `Derive-Secret`
-  * The `salt` and `label` arguments are provided
-  * The `State` argument should be initialized with the following
-    contents:
-    * `group_id` and `transcript_hash`: The zero-length octet string
-    * `epoch`: 0
-    * `roster`, `tree`: Zero-length vectors
-  * That is, the state should serialize to a sequence of 14 zeros
 * `Derive-Key-Pair`
 * ECIES
   * Encryption and decryption is done using the key pair generated
