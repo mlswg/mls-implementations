@@ -4,6 +4,24 @@ This directory contains binary files with pre-serialized test
 vectors.  Each file contains a single structure in a TLS-syntax
 format defined below (in each case, the `XXXTestVectors` struct).
 
+## Deltas from the Spec
+
+The primary interop target for now is draft-03.  However, due to a
+couple of deficiencies in the spec, these test vectors deviate from
+the spec.
+
+First, we use an altertive `ECIESCiphertext` struct that uses three
+length octets to accommodate the `Welcome` message.
+
+```
+struct {
+  DHPublicKey ephemeral_key;
+  opaque ciphertext<0..2^24-1>;
+} ECIESCiphertext;
+```
+
+[[ TODO: Beurdouche's fixes to the application key schedule ]]
+
 ## Tree Math
 
 File: [tree_math.bin](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/tree_math.bin)
@@ -69,6 +87,7 @@ File: [crypto.bin](https://github.com/mlswg/mls-implementations/blob/master/test
 ```
 struct {
   opaque hkdf_extract_out<0..255>;
+  GroupState derive_secret_state;
   opaque derive_secret_out<0..255>;
   DHPublicKey derive_key_pair_pub;
   ECIESCiphertext ecies_out;
