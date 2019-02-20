@@ -132,11 +132,11 @@ File: [key_schedule.bin](https://github.com/mlswg/mls-implementations/blob/maste
 
 ```
 struct {
-  opaque update_secret;
-  opaque epoch_secret;
-  opaque application_secret;
-  opaque confirmation_key;
-  opaque init_secret;
+  opaque update_secret<0..255>;
+  opaque epoch_secret<0..255>;
+  opaque application_secret<0..255>;
+  opaque confirmation_key<0..255>;
+  opaque init_secret<0..255>;
 } KeyScheduleEpoch;
 
 struct {
