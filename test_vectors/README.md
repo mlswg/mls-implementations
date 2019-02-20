@@ -165,7 +165,9 @@ over the course of several epochs.
 * The initial `GroupState` object input to the key schedule should
   be deserialized from the `base_group_state` object.
 * For each epoch, the `epoch` field of the GroupState object is
-  incremented before being provided to the key schedule.
+  incremented after being provided to the key schedule. This is to
+  say, the key schedule is run on the `base_group_state` object before
+  its `epoch` is incremented for the first time.
 
 For each epoch, given inputs as described above, your implementation
 should replacate the `epoch_secret`, `application_secret`,
