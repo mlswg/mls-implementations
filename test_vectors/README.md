@@ -188,7 +188,7 @@ struct {
   opaque add<0..2^32-1>;
   opaque update<0..2^32-1>;
   opaque remove<0..2^32-1>;
-} CipherSuiteCase;
+} MessagesCase;
 
 struct {
   uint32_t epoch;
