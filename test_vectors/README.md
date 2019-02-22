@@ -202,7 +202,7 @@ struct {
   opaque random<0..255>;
 
   SignatureScheme uik_all_scheme;
-  UserInitKey user_init_key_all;
+  opaque user_init_key_all<0..2^32-1>;
 
   MessagesCase case_p256_p256;
   MessagesCase case_x25519_ed25519;
