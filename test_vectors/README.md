@@ -28,6 +28,7 @@ File: [tree_math.bin](https://github.com/mlswg/mls-implementations/blob/master/t
 
 ```
 struct {
+  uint32 tree_size;
   uint32 root<0..2^32-1>;
   uint32 left<0..2^32-1>;
   uint32 right<0..2^32-1>;
@@ -39,9 +40,11 @@ struct {
 These vectors have the following meaning, where the tree relations
 are as defined in [the specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#tree-computation-terminology):
 
+* `tree_size` specifies the size of the test tree for the left /
+  right / parent / sibling tests.
 * `root[i]` is the index of the root of a tree with `i+1` leaves
 * The remaining vectors are all within the context of a tree with
-  255 leaves:
+  `tree_size` leaves:
   * `left[i]` is the index of the left child of node `i` 
   * `right[i]` is the index of the right child of node `i` 
   * `parent[i]` is the index of the parent of node `i` 
