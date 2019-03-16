@@ -6,7 +6,8 @@ format defined below (in each case, the `XXXTestVectors` struct).
 
 ## Deltas from the Spec
 
-The primary interop target for now is draft-03.  However, due to a
+The primary interop target for now is draft-03, except for the
+application key schedule tests, which target draft-04.  However, due to a
 couple of deficiencies in the spec, these test vectors deviate from
 the spec.
 
@@ -20,7 +21,7 @@ struct {
 } ECIESCiphertext;
 ```
 
-[[ TODO: Beurdouche's fixes to the application key schedule ]]
+[[ TODO: anything else ]]
 
 ## Tree Math
 
@@ -173,8 +174,57 @@ over the course of several epochs.
   its `epoch` is incremented for the first time.
 
 For each epoch, given inputs as described above, your implementation
-should replacate the `epoch_secret`, `application_secret`,
+should replicate the `epoch_secret`, `application_secret`,
 `confirmation_key`, and `init_secret` outputs of the key schedule.
+
+## Application Key Schedule
+
+File: [app_key_schedule.bin](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/app_key_schedule.bin)
+
+```
+struct {
+  opaque secret<0..255>;
+  opaque key<0..255>;
+  opaque nonce<0..255>;
+} AppKeyStep;
+
+AppKeyScheduleStep AppKeySequence<0..2^32-1>;
+KeySequence AppKeyScheduleCase<0..2^32-1>;
+
+struct {
+  uint32_t n_members;
+  uint32_t n_generations;
+  opaque application_secret<0..255>;
+
+  AppKeyScheduleCase case_p256;
+  AppKeyScheduleCase case_x25519;
+} AppKeyScheduleTestVectors;
+```
+
+For each ciphersuite, the `AppKeyScheduleTestVectors` struct
+provides an `AppKeyScheduleCase` that describes the outputs of the
+MLS application key schedule, for each participant in a group over
+several generations.
+
+* The `n_members` field specifies the number of members in the
+  group.  Each `AppKeyScheduleCase` vector should have this many
+  entries.  The entry `case[j]` represents the vector of application
+  keys for participant `j`.
+* The `n_generations` field specifies the number of generations of
+  application keys that are generated per participant.  Each vector
+  `case[j]` should have this many entries.  The entry `case[j][k]`
+  represents the values at generation `k` for participant `j`.
+* The `application_secret` field represents the root application secret for
+  this epoch (the one derived from the `epoch_secret`).
+* For a given participant and generation, the `AppKeyStep`, the
+  fields in the `AppKeyStep` object represent the following values:
+  * `secret` represents `application_secret_[j]_[k]`
+  * `key` represents `write_key_[j]_[k]`
+  * `nonce` represents `write_nonce_[j]_[k]`
+
+Given the inputs as described above, your implementation should
+replicate the outputs of the key schedule for each participant and
+generation.
 
 ## Message Parsing and Serialization
 
