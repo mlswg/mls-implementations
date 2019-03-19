@@ -91,7 +91,6 @@ File: [crypto.bin](https://github.com/mlswg/mls-implementations/blob/master/test
 ```
 struct {
   opaque hkdf_extract_out<0..255>;
-  GroupState derive_secret_state;
   opaque derive_secret_out<0..255>;
   DHPublicKey derive_key_pair_pub;
   ECIESCiphertext ecies_out;
@@ -102,7 +101,7 @@ struct {
   opaque hkdf_extract_ikm<0..255>;
   opaque derive_secret_salt<0..255>;
   opaque derive_secret_label<0..255>;
-  uint32 derive_secret_length;
+  opaque derive_secret_context<0..255>;
   opaque derive_key_pair_seed<0..255>;
   opaque ecies_plaintext<0..255>;
 
