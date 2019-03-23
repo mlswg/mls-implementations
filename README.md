@@ -16,3 +16,5 @@ For more real-time communication specific to implementation details, you can joi
 [List of existing implementations](https://github.com/mlswg/mls-implementations/blob/master/implementation_list.md)
 
 [Test vectors](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/README.md)
+
+[Status of implementations against test vectors](https://docs.google.com/spreadsheets/d/1SBIpl6NAr-HbHeVcOiNtNfAAFqTEQX4dK7_BrgEF1xc/edit#gid=0)
