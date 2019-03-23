@@ -72,9 +72,9 @@ all configurations of a tree with `n_leaves` leaves.
 
 * The `cases` vector should have `2^(2*n_leaves - 1)` entries
   * The entry at index `t` represents the set of resolutions for the
-    tree with a blank / filled patter matching the bit pattern of the
+    tree with a blank / filled pattern matching the bit pattern of the
     integer `t`.  
-  * If `(t >> n) == 1`, then node `n` in the tree is
+  * If `((t >> n) & 1) == 1`, then node `n` in the tree is
     filled; otherwise it is blank.
 * Each `ResolutionCase` vector contains the resolutions of every
   node in the tree, in order
