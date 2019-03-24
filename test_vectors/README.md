@@ -6,8 +6,7 @@ format defined below (in each case, the `XXXTestVectors` struct).
 
 ## Deltas from the Spec
 
-The primary interop target for now is draft-03, except for the
-application key schedule tests, which target draft-04.  However, due to a
+The primary interop target for now is draft-04.  However, due to a
 couple of deficiencies in the spec, these test vectors deviate from
 the spec.
 
