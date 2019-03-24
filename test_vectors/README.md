@@ -99,7 +99,7 @@ struct {
 struct {
   opaque hkdf_extract_salt<0..255>;
   opaque hkdf_extract_ikm<0..255>;
-  opaque derive_secret_salt<0..255>;
+  opaque derive_secret_secret<0..255>;
   opaque derive_secret_label<0..255>;
   opaque derive_secret_context<0..255>;
   opaque derive_key_pair_seed<0..255>;
