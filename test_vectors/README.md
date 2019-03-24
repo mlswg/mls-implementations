@@ -10,13 +10,13 @@ The primary interop target for now is draft-04.  However, due to a
 couple of deficiencies in the spec, these test vectors deviate from
 the spec.
 
-First, we use an altertive `ECIESCiphertext` struct that uses three
+First, we use an alternative `ECIESCiphertext` struct that uses four
 length octets to accommodate the `Welcome` message.
 
 ```
 struct {
   DHPublicKey ephemeral_key;
-  opaque ciphertext<0..2^24-1>;
+  opaque ciphertext<0..2^32-1>;
 } ECIESCiphertext;
 ```
 
