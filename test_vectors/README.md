@@ -15,7 +15,7 @@ length octets to accommodate the `Welcome` message.
 
 ```
 struct {
-  DHPublicKey ephemeral_key;
+  HPKEPublicKey ephemeral_key;
   opaque ciphertext<0..2^32-1>;
 } ECIESCiphertext;
 ```
@@ -91,7 +91,7 @@ File: [crypto.bin](https://github.com/mlswg/mls-implementations/blob/master/test
 struct {
   opaque hkdf_extract_out<0..255>;
   opaque derive_secret_out<0..255>;
-  DHPublicKey derive_key_pair_pub;
+  HPKEPublicKey derive_key_pair_pub;
   ECIESCiphertext ecies_out;
 } CryptoCase;
 
@@ -123,7 +123,7 @@ the indicated ciphersuites.  The following functions are tested:
     ephemeral key pair from the inputs.
   * `(skE, pkE)  = Derive-Key-Pair(pkR || plaintext)`, where `pkR`
     is the serialization of the recipient's public key (the body of
-    a `DHPublicKey`, with no length octets), and `plaintext` is the
+    a `HPKEPublicKey`, with no length octets), and `plaintext` is the
     plaintext being encrypted.
 
 Your implementation should be able to reproduce these values.
