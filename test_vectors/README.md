@@ -20,7 +20,35 @@ struct {
 } ECIESCiphertext;
 ```
 
-[[ TODO: anything else ]]
+Second, there are a couple of bugs in [the current HPKE
+spec](https://tools.ietf.org/html/draft-barnes-cfrg-hpke-01) that
+need fixing:
+
+* The one-octet length fields in the HPKECiphertext struct can
+  overflow with large, uncompressed points.  For example, in the
+  base HPKE case, the `kemContext` field holds two EC points, which
+  with P-521 comes to >260 octets.  So instead we use two-octet
+  lengths:
+
+```
+struct {
+    uint16 ciphersuite;
+    uint8 mode;
+    opaque kemContext<0..2^16-1>;
+    opaque info<0..2^16-1>;
+} HPKEContext;
+```
+
+* The ciphersuite IDs in the HPKE draft are all messed up because of
+  copy / paste errors (they're all either 1 or 2).  We use the
+  following values:
+
+| Value  | Ciphersuite             |
+|:------:|:------------------------|
+| 0x0001 | P256_SHA256_AES128GCM   |
+| 0x0002 | P521_SHA512_AES256GCM   |
+| 0x0003 | X25519_SHA256_AES128GCM |
+| 0x0004 | X448_SHA512_AES256GCM   |
 
 ## Tree Math
 
