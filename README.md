@@ -9,7 +9,9 @@ Date TBD
 
 All important issues relating to MLS should be discussed on the [MLS mailing list](https://www.ietf.org/mailman/listinfo/mls).
 
-For more real-time communication specific to implementation details, you can join the MLS implementations Wire channel: https://app.wire.com/join/?key=3tL-NJOoCKZlDXNU1H2c&code=kZOc0ujnDQ9Tq98tLfSt
+For more real-time communication specific to implementation details, you can join the [MLS implementations](https://app.wire.com/join/?key=3tL-NJOoCKZlDXNU1H2c&code=kZOc0ujnDQ9Tq98tLfSt) Wire channel.
+
+For general discussions of the MLS specifications (as opposed to implementations), please use the [Public MLS Discussions](https://app.wire.com/join/?key=qmrRRfaklMRm8UsYSqpA&code=KD8O6_Pvkli3pmzXbWtr) wire channel.
 
 ## Current material
 
