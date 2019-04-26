@@ -214,8 +214,8 @@ struct {
   opaque nonce<0..255>;
 } AppKeyStep;
 
-AppKeyScheduleStep AppKeySequence<0..2^32-1>;
-KeySequence AppKeyScheduleCase<0..2^32-1>;
+AppKeyStep AppKeySequence<0..2^32-1>;
+AppKeySequence AppKeyScheduleCase<0..2^32-1>;
 
 struct {
   uint32_t n_members;
