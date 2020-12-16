@@ -23,16 +23,22 @@ ${PROTO_GO}: ${PROTO_DIR}/${PROTO_FILE}
 				 --go-grpc_opt=paths=source_relative \
 				 -I ${PROTO_DIR} \
 		     ${PROTO_FILE}
-	
+
+# Run mock clients (gRPC servers) in various languages
 run-go: ${PROTO_GO}
 	go run go-mock-client/main.go
 
 run-cpp: ${PROTO_DIR}/${PROTO_FILE}
 	make -C cpp-mock-client run
 
+run-rs:
+	cd rust-mock-client && cargo run
+
+# Run the test runner
 run-test: ${PROTO_GO}
 	go run test-runner/main.go
 
 clean:
 	rm -f ${PROTO_GO}
 	make -C cpp-mock-client cclean
+	cd rust-mock-client && cargo clean

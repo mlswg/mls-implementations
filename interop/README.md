@@ -8,11 +8,18 @@ servers) in C++, Go, and Rust.
 
 ## Quickstart
 
-```
+```bash
 # Start up a client
-> make run-go   # ... in Go
-> make run-cpp  # ... in C++
+make run-go   # ... in Go
+make run-cpp  # ... in C++
+make run-rs   # ... in Rust
 
 # Invoke the test runner against that client
-> make run-test
+make run-test
+
+# You should get an output of the following form, depending on 
+# which client you started:
+2020/12/16 17:44:07 Client name: Mock-Go
+2020/12/16 17:44:07 Client name: Mock-C++
+2020/12/16 17:44:07 Client name: Mock-Rust
 ```
