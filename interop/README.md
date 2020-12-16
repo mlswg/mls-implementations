@@ -11,6 +11,7 @@ servers) in C++, Go, and Rust.
 ```
 # Start up a client
 > make run-go   # ... in Go
+> make run-cpp  # ... in C++
 
 # Invoke the test runner against that client
 > make run-test

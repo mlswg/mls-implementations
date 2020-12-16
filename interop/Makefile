@@ -27,8 +27,12 @@ ${PROTO_GO}: ${PROTO_DIR}/${PROTO_FILE}
 run-go: ${PROTO_GO}
 	go run go-mock-client/main.go
 
+run-cpp: ${PROTO_DIR}/${PROTO_FILE}
+	make -C cpp-mock-client run
+
 run-test: ${PROTO_GO}
 	go run test-runner/main.go
 
 clean:
 	rm -f ${PROTO_GO}
+	make -C cpp-mock-client cclean
