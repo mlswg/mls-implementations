@@ -36,11 +36,11 @@ indicated output.
   * Outputs: Success or Error
 
 One pair of such methods for each test vector type (parameters):
-* Tree math (none)
-* Crypto operations (ciphersuite)
-* Hash ratchet (ciphersuite)
-* Key schedule (ciphersuite)
-* TreeKEM (ciphersuite)
+* Tree math (number of leaves)
+* Hash ratchet (ciphersuite, number of leaves, number of generations)
+* Secret tree (ciphersuite, number of leaves)
+* Key schedule (ciphersuite, number of epochs)
+* Tree hashing (ciphersuite, number of leaves)
 * Messages (none)
 
 ### Ways to become a member of a group 
