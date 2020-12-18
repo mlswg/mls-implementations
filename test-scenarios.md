@@ -17,8 +17,6 @@ clients do indeed have the same cryptographic state.  The following things
 should be checked:
 
 * Each member's state produces the same authentication secret
-* An export with the same label and context produces the same exported value at
-  each member
 * For each member:
   * A message can be encrypted
   * The message can be successfully decrypted by all other members

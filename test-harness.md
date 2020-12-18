@@ -13,15 +13,45 @@ ways these RPCs could be implemented.
 
 ## Test Harness RPCs
 
-Ways to become a member of a group ("encrypt flag" indicates whether handshake
-messages in the group are encrypted):
+All RPCs are fallible.  They should be able to return an error as well as the
+indicated output.
+
+### Information about the client
+
+* Name of the client (for reporting)
+  * Inputs: (none)
+  * Outputs: Human-readable name
+
+* Supported ciphersuites
+  * Inputs: (none)
+  * Outputs: List of ciphersuites
+
+### Test Vectors
+
+* Generate test vectors:
+  * Inputs: (as specified below)
+  * Outputs: Test vector object (binary, TLS serialization)
+* Verify test vectors:
+  * Inputs: Test vector object (binary, TLS serialization)
+  * Outputs: Success or Error
+
+One pair of such methods for each test vector type (parameters):
+* Tree math (none)
+* Crypto operations (ciphersuite)
+* Hash ratchet (ciphersuite)
+* Key schedule (ciphersuite)
+* TreeKEM (ciphersuite)
+* Messages (none)
+
+### Ways to become a member of a group 
+
+"Encrypt flag" indicates whether handshake messages in the group are encrypted.
 
 * Create a new group
-  * Inputs: Group ID, ciphersuite, credential, signature private key, encrypt
-    flag 
+  * Inputs: group ID, ciphersuite, credential type, encrypt flag 
   * Outputs: Pointer to new state
 * Create a new KeyPackage to begin a join
-  * Inputs: ciphersuite, credential, signature private key
+  * Inputs: ciphersuite, credential type
   * Outputs: KeyPackage, callback to which Welcome should be sent
 * Complete joining a group (Welcome callback)
   * Inputs: Welcome, encrypt flag
@@ -30,13 +60,13 @@ messages in the group are encrypted):
   * Inputs: PublicGroupState, encrypt flag
   * Outputs: MLSPlaintext(Commit), Welcome, pointer to new state
 
-Operations using a group state:
+### Operations using a group state:
 
 * Get state auth
   * Inputs: (none)
   * Outputs: authentication_secret
 * Export a secret
-  * Inputs: label, context
+  * Inputs: label, context, key_length
   * Outputs: exported_value
 
 * Protect an application message
@@ -68,11 +98,12 @@ Operations using a group state:
   * Inputs: (none)
   * Outputs: MLSPlaintext(Proposal(AppAck))
 * Generate a Commit message covering a set of proposals
-  * Inputs: One or more MLSPlaintext(Proposal(\*))
+  * Inputs:
+    * One or more MLSPlaintext(Proposal(\*)) to be included by reference
+    * One or more MLSPlaintext(Proposal(\*)) to be included inline
   * Outputs: Zero or more MLSPlaintext(Proposal(\*)), MLSPlaintext(Commit)
-  * Note: The committer chooses whether to inline any proposals, and returns the
-    proposals not inlined.  If they commiter can't commit one or more of the
-    proposals, it must return an error.
+  * Note: The caller must ensure that the requested inline proposals were
+    created by the committer
 
 * Handle a collection of MLSPlaintexts and a Commit
   * Inputs: Zero or more MLSPlaintext(Proposal(\*)), MLSPlaintext(Commit)
@@ -91,4 +122,6 @@ independent software stacks.  The most obvious candidates are:
 
 All of these options allow implementations in multiple languages and on multiple
 platforms.  Using a pre-provided RPC framework could simplify some RPC details,
-but would require implementors to figure out how ti integrate that framework.
+but would require implementors to figure out how to integrate that framework.
+
+For now, we are going with gRPC.
