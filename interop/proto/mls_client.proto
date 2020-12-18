@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "github.com/mlswg/mls-implementations/interop/proto";
+
+package mls_client;
+
+// A wrapper around an MLS client implementation
+service MLSClient {
+  // The human-readable name of the stack
+  rpc Name(NameRequest) returns (NameResponse) {}
+}
+
+// rpc Name
+message NameRequest {}
+
+message NameResponse {
+  string name = 1;
+}
+
