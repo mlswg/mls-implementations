@@ -24,8 +24,23 @@ type MockClient struct {
 }
 
 func (mc *MockClient) Name(ctx context.Context, req *pb.NameRequest) (*pb.NameResponse, error) {
-	log.Printf("Received name request")
+	log.Printf("Received Name request")
 	return &pb.NameResponse{Name: implementationName}, nil
+}
+
+func (mc *MockClient) SupportedCiphersuites(ctx context.Context, req *pb.SupportedCiphersuitesRequest) (*pb.SupportedCiphersuitesResponse, error) {
+	log.Printf("Received SupportedCiphersuites request")
+	return &pb.SupportedCiphersuitesResponse{Ciphersuites: []uint32{}}, nil
+}
+
+func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTestVectorRequest) (*pb.GenerateTestVectorResponse, error) {
+	log.Printf("Received GenerateTestVector request")
+	return &pb.GenerateTestVectorResponse{Result: &pb.GenerateTestVectorResponse_TestVector{[]byte{}}}, nil
+}
+
+func (mc *MockClient) VerifyTestVector(ctx context.Context, req *pb.VerifyTestVectorRequest) (*pb.VerifyTestVectorResponse, error) {
+	log.Printf("Received VerifyTestVector request")
+	return &pb.VerifyTestVectorResponse{Result: &pb.VerifyTestVectorResponse_Success{true}}, nil
 }
 
 ///

@@ -59,7 +59,7 @@ struct {
 } HashRatchetSequence;
 
 struct {
-  bytes base_secret;
+  CryptoValue base_secret;
   HashRatchetSequence chains<0..2^32-1>;
 } HashRatchetTestVector;
 ```
@@ -114,7 +114,9 @@ struct {
   MLSPlaintext commit;       // chosen by generator.  membership_tag and
                              // confirmation_tag MUST be valid; otherwise 
                              // content is only used for transcript.
-                             
+
+  CryptoValue confirmed_transcript_hash;
+  CryptoValue interim_transcript_hash;
   CryptoValue group_context;
 
   CryptoValue commit_secret; // chosen by generator
@@ -140,7 +142,6 @@ struct {
 struct {
   CryptoValue group_id;
   CryptoValue base_init_secret;
-
   Epoch epochs<0..2^32-1>;
 } KeyScheduleTestVector;
 ```
@@ -153,10 +154,11 @@ Verification:
   * Update the transcript hash with the provided commit message
   * Construct a GroupContext with the following contents:
     * `group_id = group_id`
-    * `epoch = i+1`
+    * `epoch = i`
     * `tree_hash` as specified
     * `confirmed_transcript_hash` as computed from the commit message
     * `extension = {}`
+  * Verify that the transcript hashes and group context are as specified
   * Verify that the key schedule outputs are as specified given the following
     inputs:
     * `init_key` from the prior epoch or `base_init_key`

@@ -8,6 +8,13 @@ package mls_client;
 service MLSClient {
   // The human-readable name of the stack
   rpc Name(NameRequest) returns (NameResponse) {}
+
+  // List of supported ciphersuites
+  rpc SupportedCiphersuites(SupportedCiphersuitesRequest) returns (SupportedCiphersuitesResponse) {}
+
+  // Test vector generation and verificatoin
+  rpc GenerateTestVector(GenerateTestVectorRequest) returns (GenerateTestVectorResponse) {}
+  rpc VerifyTestVector(VerifyTestVectorRequest) returns (VerifyTestVectorResponse) {}
 }
 
 // rpc Name
@@ -17,3 +24,44 @@ message NameResponse {
   string name = 1;
 }
 
+// rpc SupportedCiphersuites
+message SupportedCiphersuitesRequest {}
+
+message SupportedCiphersuitesResponse {
+  repeated uint32 ciphersuites = 1; // Actually uint16 ciphersuite values
+}
+
+// rpc GenerateTestVector
+enum TestVectorType {
+  TREE_MATH = 0;
+  // TODO continue
+}
+
+// Generation parameters that are not needed for a given test type are ignored
+message GenerateTestVectorRequest {
+  TestVectorType type = 1;
+  uint32 ciphersuite = 2; // Actually uint16
+  uint32 n_leaves = 3;
+  uint32 n_generations = 4;
+  uint32 n_epochs = 5;
+}
+
+message GenerateTestVectorResponse {
+  oneof result {
+    bytes test_vector = 1;
+    string error = 2;
+  }
+}
+
+// rpc VerifyTestVector
+message VerifyTestVectorRequest {
+  TestVectorType type = 1;
+  bytes test_vector = 2;
+}
+
+message VerifyTestVectorResponse {
+  oneof result {
+    bool success = 1; // Provide this on success (value unimportant)
+    string error = 2; // Provide this on failure
+  }
+}
