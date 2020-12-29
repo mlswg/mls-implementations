@@ -42,31 +42,18 @@ func main() {
 
 	// Generate a test vector
 	gtvr, err := c.GenerateTestVector(ctx, &pb.GenerateTestVectorRequest{
-		Type: pb.TestVectorType_TREE_MATH,
+		TestVectorType: pb.TestVectorType_TREE_MATH,
 	})
 	chk("generate test vector", err)
-
-	var testVector []byte
-	switch r := gtvr.Result.(type) {
-	case *pb.GenerateTestVectorResponse_TestVector:
-		log.Printf("Generated test vector: %x", r.TestVector)
-		testVector = r.TestVector
-	case *pb.GenerateTestVectorResponse_Error:
-		log.Fatalf("Error: generate test vector (semantic) - %s", r.Error)
-	}
+	log.Printf("Generated test vector: %x", gtvr.TestVector)
 
 	// Verify a test vector
-	vtvr, err := c.VerifyTestVector(ctx, &pb.VerifyTestVectorRequest{
-		Type:       pb.TestVectorType_TREE_MATH,
-		TestVector: testVector,
+	_, err = c.VerifyTestVector(ctx, &pb.VerifyTestVectorRequest{
+		TestVectorType: pb.TestVectorType_TREE_MATH,
+		TestVector:     gtvr.TestVector,
 	})
-	chk("generate test vector", err)
-	switch r := vtvr.Result.(type) {
-	case *pb.VerifyTestVectorResponse_Success:
-		log.Printf("Verified test vector: %v", r.Success)
-	case *pb.VerifyTestVectorResponse_Error:
-		log.Fatalf("Error: generate test vector (semantic) - %s", r.Error)
-	}
+	chk("verify test vector", err)
+	log.Printf("Verified test vector")
 }
 
 func chk(message string, err error) {

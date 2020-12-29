@@ -7,9 +7,6 @@ use mls_client::{NameRequest, NameResponse};
 use mls_client::{SupportedCiphersuitesRequest, SupportedCiphersuitesResponse};
 use mls_client::{VerifyTestVectorRequest, VerifyTestVectorResponse};
 
-use mls_client::generate_test_vector_response;
-use mls_client::verify_test_vector_response;
-
 pub mod mls_client {
     tonic::include_proto!("mls_client");
 }
@@ -53,18 +50,12 @@ impl MlsClient for MlsClientImpl {
         println!("Got GenerateTestVector request");
 
         let obj = request.get_ref();
-        if (obj.r#type != TEST_VECTOR_TYPE as i32) {
-            let msg = "Invalid test vector type";
-            let result = generate_test_vector_response::Result::Error(msg.to_string());
-            let response = GenerateTestVectorResponse {
-                result: Some(result),
-            };
-            return Ok(Response::new(response));
+        if (obj.test_vector_type != TEST_VECTOR_TYPE as i32) {
+            return Err(tonic::Status::new(tonic::Code::InvalidArgument, "Invalid test vector type"))
         }
 
-        let result = generate_test_vector_response::Result::TestVector(TEST_VECTOR.to_vec());
         let response = GenerateTestVectorResponse {
-            result: Some(result),
+            test_vector: TEST_VECTOR.to_vec(),
         };
 
         Ok(Response::new(response))
@@ -77,30 +68,15 @@ impl MlsClient for MlsClientImpl {
         println!("Got VerifyTestVector request");
 
         let obj = request.get_ref();
-        if (obj.r#type != TEST_VECTOR_TYPE as i32) {
-            let msg = "Invalid test vector type";
-            let result = verify_test_vector_response::Result::Error(msg.to_string());
-            let response = VerifyTestVectorResponse {
-                result: Some(result),
-            };
-            return Ok(Response::new(response));
+        if (obj.test_vector_type != TEST_VECTOR_TYPE as i32) {
+            return Err(tonic::Status::new(tonic::Code::InvalidArgument, "Invalid test vector type"))
         }
 
         if (obj.test_vector != TEST_VECTOR) {
-            let msg = "Invalid test vector";
-            let result = verify_test_vector_response::Result::Error(msg.to_string());
-            let response = VerifyTestVectorResponse {
-                result: Some(result),
-            };
-            return Ok(Response::new(response));
+            return Err(tonic::Status::new(tonic::Code::InvalidArgument, "Invalid test vector"))
         }
 
-        let result = verify_test_vector_response::Result::Success(true);
-        let response = VerifyTestVectorResponse {
-            result: Some(result),
-        };
-
-        Ok(Response::new(response))
+        Ok(Response::new(VerifyTestVectorResponse::default()))
     }
 }
 

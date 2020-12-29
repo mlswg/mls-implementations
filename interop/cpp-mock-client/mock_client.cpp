@@ -9,6 +9,7 @@ using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
+using grpc::StatusCode;
 using namespace mls_client;
 
 static constexpr char implementation_name[] = "Mock-C++";
@@ -46,10 +47,8 @@ class MLSClientImpl final : public MLSClient::Service
               GenerateTestVectorResponse* reply) override
   {
     std::cout << "Got GenerateTestVector request" << std::endl;
-    if (request->type() != test_vector_type) {
-      reply->set_error("Incorrect test vector type");
-      std::cout << "  ... error" << std::endl;
-      return Status::OK;
+    if (request->test_vector_type() != test_vector_type) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
     }
 
     std::cout << "  ... ok" << std::endl;
@@ -59,20 +58,17 @@ class MLSClientImpl final : public MLSClient::Service
 
   Status VerifyTestVector(ServerContext* /* context */,
               const VerifyTestVectorRequest* request,
-              VerifyTestVectorResponse* reply) override
+              VerifyTestVectorResponse* /* reply */) override
   {
     std::cout << "Got VerifyTestVector request" << std::endl;
-    if (request->type() != test_vector_type) {
-      reply->set_error("Incorrect test vector type");
-      return Status::OK;
+    if (request->test_vector_type() != test_vector_type) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
     }
 
     if (request->test_vector() != fixed_test_vector) {
-      reply->set_error("Incorrect test vector");
-      return Status::OK;
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector");
     }
 
-    reply->set_success(true);
     return Status::OK;
   }
 
