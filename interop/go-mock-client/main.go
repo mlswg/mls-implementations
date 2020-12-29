@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -8,12 +9,17 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/mlswg/mls-implementations/interop/proto"
 )
 
-const (
-	implementationName = "Mock-Go"
+var (
+	implementationName    = "Mock-Go"
+	supportedCiphersuites = []uint32{0xA0A0, 0xA1A1}
+	testVectorType        = pb.TestVectorType_TREE_MATH
+	testVector            = []byte{0, 1, 2, 3}
 )
 
 ///
@@ -24,8 +30,37 @@ type MockClient struct {
 }
 
 func (mc *MockClient) Name(ctx context.Context, req *pb.NameRequest) (*pb.NameResponse, error) {
-	log.Printf("Received name request")
+	log.Printf("Received Name request")
 	return &pb.NameResponse{Name: implementationName}, nil
+}
+
+func (mc *MockClient) SupportedCiphersuites(ctx context.Context, req *pb.SupportedCiphersuitesRequest) (*pb.SupportedCiphersuitesResponse, error) {
+	log.Printf("Received SupportedCiphersuites request")
+	return &pb.SupportedCiphersuitesResponse{Ciphersuites: []uint32{}}, nil
+}
+
+func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTestVectorRequest) (*pb.GenerateTestVectorResponse, error) {
+	log.Printf("Received GenerateTestVector request")
+
+	if req.TestVectorType != testVectorType {
+		return nil, status.Error(codes.InvalidArgument, "Invalid test vector type")
+	}
+
+	return &pb.GenerateTestVectorResponse{TestVector: testVector}, nil
+}
+
+func (mc *MockClient) VerifyTestVector(ctx context.Context, req *pb.VerifyTestVectorRequest) (*pb.VerifyTestVectorResponse, error) {
+	log.Printf("Received VerifyTestVector request")
+
+	if req.TestVectorType != testVectorType {
+		return nil, status.Error(codes.InvalidArgument, "Invalid test vector type")
+	}
+
+	if !bytes.Equal(req.TestVector, testVector) {
+		return nil, status.Error(codes.InvalidArgument, "Invalid test vector")
+	}
+
+	return &pb.VerifyTestVectorResponse{}, nil
 }
 
 ///

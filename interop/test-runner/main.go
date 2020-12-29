@@ -22,19 +22,42 @@ func init() {
 func main() {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(serverOpt, grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
+	chk("Failure to connect", err)
+
 	defer conn.Close()
 	c := pb.NewMLSClientClient(conn)
 
-	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	r, err := c.Name(ctx, &pb.NameRequest{})
+	// Get client name
+	nr, err := c.Name(ctx, &pb.NameRequest{})
+	chk("name", err)
+	log.Printf("Client name: %s", nr.GetName())
+
+	// Get client's supported ciphersuites
+	scr, err := c.SupportedCiphersuites(ctx, &pb.SupportedCiphersuitesRequest{})
+	chk("supported ciphersuites", err)
+	log.Printf("Supported ciphersuites: %+v", scr.Ciphersuites)
+
+	// Generate a test vector
+	gtvr, err := c.GenerateTestVector(ctx, &pb.GenerateTestVectorRequest{
+		TestVectorType: pb.TestVectorType_TREE_MATH,
+	})
+	chk("generate test vector", err)
+	log.Printf("Generated test vector: %x", gtvr.TestVector)
+
+	// Verify a test vector
+	_, err = c.VerifyTestVector(ctx, &pb.VerifyTestVectorRequest{
+		TestVectorType: pb.TestVectorType_TREE_MATH,
+		TestVector:     gtvr.TestVector,
+	})
+	chk("verify test vector", err)
+	log.Printf("Verified test vector")
+}
+
+func chk(message string, err error) {
 	if err != nil {
-		log.Fatalf("could not get client name: %v", err)
+		log.Fatalf("Error: %s - %v", message, err)
 	}
-	log.Printf("Client name: %s", r.GetName())
 }
