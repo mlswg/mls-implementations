@@ -63,7 +63,7 @@ func main() {
 	chk("generate test vector", err)
 	switch r := vtvr.Result.(type) {
 	case *pb.VerifyTestVectorResponse_Success:
-		log.Printf("Verified test vector: %x", r.Success)
+		log.Printf("Verified test vector: %v", r.Success)
 	case *pb.VerifyTestVectorResponse_Error:
 		log.Fatalf("Error: generate test vector (semantic) - %s", r.Error)
 	}

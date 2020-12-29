@@ -12,7 +12,7 @@ service MLSClient {
   // List of supported ciphersuites
   rpc SupportedCiphersuites(SupportedCiphersuitesRequest) returns (SupportedCiphersuitesResponse) {}
 
-  // Test vector generation and verificatoin
+  // Test vector generation and verification
   rpc GenerateTestVector(GenerateTestVectorRequest) returns (GenerateTestVectorResponse) {}
   rpc VerifyTestVector(VerifyTestVectorRequest) returns (VerifyTestVectorResponse) {}
 }

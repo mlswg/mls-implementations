@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -12,8 +13,11 @@ import (
 	pb "github.com/mlswg/mls-implementations/interop/proto"
 )
 
-const (
-	implementationName = "Mock-Go"
+var (
+	implementationName    = "Mock-Go"
+	supportedCiphersuites = []uint32{0xA0A0, 0xA1A1}
+	testVectorType        = pb.TestVectorType_TREE_MATH
+	testVector            = []byte{0, 1, 2, 3}
 )
 
 ///
@@ -35,12 +39,43 @@ func (mc *MockClient) SupportedCiphersuites(ctx context.Context, req *pb.Support
 
 func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTestVectorRequest) (*pb.GenerateTestVectorResponse, error) {
 	log.Printf("Received GenerateTestVector request")
-	return &pb.GenerateTestVectorResponse{Result: &pb.GenerateTestVectorResponse_TestVector{[]byte{}}}, nil
+
+	if req.Type != testVectorType {
+		response := &pb.GenerateTestVectorResponse{
+			Result: &pb.GenerateTestVectorResponse_Error{"Invalid test vector type"},
+		}
+		return response, nil
+	}
+
+	response := &pb.GenerateTestVectorResponse{
+		Result: &pb.GenerateTestVectorResponse_TestVector{testVector},
+	}
+
+	return response, nil
 }
 
 func (mc *MockClient) VerifyTestVector(ctx context.Context, req *pb.VerifyTestVectorRequest) (*pb.VerifyTestVectorResponse, error) {
 	log.Printf("Received VerifyTestVector request")
-	return &pb.VerifyTestVectorResponse{Result: &pb.VerifyTestVectorResponse_Success{true}}, nil
+
+	if req.Type != testVectorType {
+		response := &pb.VerifyTestVectorResponse{
+			Result: &pb.VerifyTestVectorResponse_Error{"Invalid test vector type"},
+		}
+		return response, nil
+	}
+
+	if !bytes.Equal(req.TestVector, testVector) {
+		response := &pb.VerifyTestVectorResponse{
+			Result: &pb.VerifyTestVectorResponse_Error{"Invalid test vector"},
+		}
+		return response, nil
+	}
+
+	response := &pb.VerifyTestVectorResponse{
+		Result: &pb.VerifyTestVectorResponse_Success{true},
+	}
+
+	return response, nil
 }
 
 ///
