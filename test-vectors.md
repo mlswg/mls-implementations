@@ -35,7 +35,7 @@ Verification:
 * `sibling[i]` is the node index of the sibling of the node with index `i` in a
   tree with `n_leaves` leaves
 
-## Hash Ratchet
+## Encryption
 
 Parameters:
 * Ciphersuite
@@ -59,45 +59,34 @@ struct {
 } HashRatchetSequence;
 
 struct {
-  CryptoValue base_secret;
-  HashRatchetSequence chains<0..2^32-1>;
-} HashRatchetTestVector;
+  CipherSuite cipher_suite;
+  CryptoValue encryption_secret;  // chosen by generator
+  CryptoValue sender_data_secret; // chosen by generator
+  
+  HashRatchetSequence handshake_keys<0..2^32-1>
+  HashRatchetSequence application_keys<0..2^32-1>
+
+  MLSCiphertext handshake_message;
+  MLSCiphertext application_message;
+} EncryptionTestVector;
 ```
 
 Verification:
 
 * For all `N`, `j`...
-  * `chains[N][j].key = ratchet_key_[2*N]_[j]` 
-  * `chains[N][j].nonce = ratchet_nonce_[2*N]_[j]` 
+  * `handshake_keys[N][j].key = ratchet_key_[2*N]_[j]` 
+  * `handshake_keys[N][j].nonce = ratchet_nonce_[2*N]_[j]` 
+  * ... underneath `handshake_ratchet_secret_[N]_[0]`
+  * ... and likewise for `application_keys` under `application_ratchet_secret_[N]_[0]`
+* `handshake_message` decrypts successfully with the key and nonce indicated in
+  the sender data
+* `application_message` decrypts successfully with the key and nonce indicated in
+  the sender data
 
 The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes are
 tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
 [Encryption
 Keys](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys)
-section of the specification.
-
-## Secret Tree
-
-Parameters:
-* Ciphersuite
-* Number of leaves in the test tree
-
-Format:
-
-```
-struct {
-  CryptoValue base_secret;
-  CryptoValue tree_node_secrets<0..2^32-1>;
-} SecretTreeTestVector;
-```
-
-Verification:
-
-* The length of `tree_node_secrets` is odd
-* `tree_node_secrets[N] = tree_node_[N]_secret`
-
-The definition of `tree_node_[N]_secret` is in the [Secret
-Tree](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#secret-tree-secret-tree)
 section of the specification.
 
 ## Key Schedule
@@ -110,17 +99,17 @@ Format:
 
 ```
 struct {
-  CryptoValue tree_hash;     // chosen by generator
   MLSPlaintext commit;       // chosen by generator.  membership_tag and
                              // confirmation_tag MUST be valid; otherwise 
                              // content is only used for transcript.
+  CryptoValue tree_hash;     // chosen by generator
+
+  CryptoValue commit_secret; // chosen by generator
+  CryptoValue psk_secret;    // chosen by generator
 
   CryptoValue confirmed_transcript_hash;
   CryptoValue interim_transcript_hash;
   CryptoValue group_context;
-
-  CryptoValue commit_secret; // chosen by generator
-  CryptoValue psk_secret;    // chosen by generator
 
   CryptoValue joiner_secret;
   CryptoValue welcome_secret;
@@ -140,16 +129,19 @@ struct {
 } Epoch;
 
 struct {
+  CipherSuite cipher_suite;
   CryptoValue group_id;
-  CryptoValue base_init_secret;
+  CryptoValue initial_tree_hash;    // chosen by generator
+  CryptoValue initial_init_secret;  // chosen by generator
   Epoch epochs<0..2^32-1>;
 } KeyScheduleTestVector;
 ```
 
 Verification:
-* Initialize `interim_transcript_hash = confirmed_transcript_hash = ""`
+* Initialize the first key schedule epoch for the group [as defined in the
+  specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation), using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the non-constant values.
 * For epoch `i`:
-  * if `i > 0`: Verify the `membership_tag` on the included commit using the
+  * Verify the `membership_tag` on the included commit using the
     `membership_key` from the prior epoch
   * Update the transcript hash with the provided commit message
   * Construct a GroupContext with the following contents:
@@ -166,7 +158,7 @@ Verification:
     * `GroupContext_[n]` as computed above
   * Verify the `confirmation_tag` on the included commit
 
-## Tree Hashing
+## TreeKEM
 
 Parameters:
 * Ciphersuite
@@ -179,14 +171,35 @@ struct {
 } RatchetTree;
 
 struct {
-  CryptoValue tree_hash;
-  optional<Node> ratchet_tree<1..2^32-1>; 
+  CipherSuite cipher_suite;
+
+  RatchetTree ratchet_tree_before; // chosen by generator
+  CryptoValue tree_hash_before;
+
+  uint32 add_sender;               // chosen by generator
+  KeyPackage my_key_package;       // chosen by generator
+  CryptoValue my_path_secret;      // chosen by generator
+
+  uint32 update_sender;            // chosen by generator
+  UpdatePath update_path;          // chosen by generator
+
+  CryptoValue root_secret;
+  RatchetTree tree_after;
+  CryptoValue tree_hash_after;
+
 } TreeKEMTestVector;
 ```
 
 Verification:
-* The tree hash of ratchet tree equals `tree_hash`
-* The ratchet tree has valid parent hashes
+* Verify that the tree hash of `tree_before` equals `tree_hash_before`
+* Verify that the tree hash of `tree_after` equals `tree_hash_after`
+* Verify that both `tree_before` and `tree_after` have valid parent hashes
+* Identify the test participant's location in the tree using `my_key_package`
+* Initialize the private state of the tree by setting `my_path_secret` at the
+  common ancestor between the test participant's leaf and `add_sender`
+* Process the `update_path` to get a new root secret and update the tree
+* Verify that the new root root secret matches `root_secret`
+* Verify that the tree now matches `tree_after`
 
 ## Messages
 
@@ -200,27 +213,31 @@ struct {
 } Message;
 
 struct {
-  Message key_package;
-  Message capabilities;
-  Message ratchet_tree;
+  Message key_package;                // KeyPackage
+  Message capabilities;               // Capabilities
+  Message lifetime;                   // uint64 not_before; uint64 not_after;
+  Message ratchet_tree;               // optional<Node> ratchet_tree<1..2^32-1>;
 
-  Message group_info;
-  Message group_secrets;
-  Message welcome;
+  Message group_info;                 // GroupInfo
+  Message group_secrets;              // GroupSecrets
+  Message welcome;                    // Welcome
 
-  Message public_group_state;
+  Message public_group_state;         // PublicGroupState
 
-  Message add_proposal;
-  Message update_proposal;
-  Message remove_proposal;
-  Message pre_shared_key_proposal;
-  Message re_init_proposal;
-  Message external_init_proposal;
-  Message app_ack_proposal;
+  Message add_proposal;               // Add
+  Message update_proposal;            // Update
+  Message remove_proposal;            // Remove
+  Message pre_shared_key_proposal;    // PreSharedKey
+  Message re_init_proposal;           // ReInit
+  Message external_init_proposal;     // ExternalInit
+  Message app_ack_proposal;           // AppAck
 
-  Message commit;
+  Message commit;                     // Commit
 
-  Message mls_ciphertext;
+  Message mls_plaintext_application;  // MLSPlaintext(ApplicationData)
+  Message mls_plaintext_proposal;     // MLSPlaintext(Proposal(*))
+  Message mls_plaintext_commit;       // MLSPlaintext(Commit)
+  Message mls_ciphertext;             // MLSCiphertext
 } MessagesTestVector;
 ```
 
