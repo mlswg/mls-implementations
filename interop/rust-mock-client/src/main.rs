@@ -1,4 +1,5 @@
 use tonic::{transport::Server, Request, Response, Status};
+use clap::Clap;
 
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
 use mls_client::TestVectorType;
@@ -80,9 +81,22 @@ impl MlsClient for MlsClientImpl {
     }
 }
 
+#[derive(Clap)]
+struct Opts {
+    #[clap(short, long, default_value="[::1]")]
+    host: String,
+
+    #[clap(short, long, default_value="50051")]
+    port: u16,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse().unwrap();
+    let opts = Opts::parse();
+
+    // XXX(RLB): There's probably a more direct way to do this than building a string and then
+    // parsing it.
+    let addr = format!("{}:{}", opts.host, opts.port).parse().unwrap();
     let mls_client_impl = MlsClientImpl::default();
 
     println!("Listening on {}", addr);
