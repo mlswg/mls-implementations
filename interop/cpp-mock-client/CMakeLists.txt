@@ -22,6 +22,7 @@ endif()
 
 find_package(Protobuf REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
+find_package(gflags REQUIRED)
 
 ###
 ### Protobuf generation
@@ -53,4 +54,4 @@ add_custom_command(
 
 add_executable(${APP_NAME} mock_client.cpp ${PB_SRC} ${GRPC_SRC})
 target_include_directories(${APP_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(mock_client gRPC::grpc++ protobuf::libprotobuf)
+target_link_libraries(mock_client gflags gRPC::grpc++ protobuf::libprotobuf)
