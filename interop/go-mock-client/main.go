@@ -36,7 +36,7 @@ func (mc *MockClient) Name(ctx context.Context, req *pb.NameRequest) (*pb.NameRe
 
 func (mc *MockClient) SupportedCiphersuites(ctx context.Context, req *pb.SupportedCiphersuitesRequest) (*pb.SupportedCiphersuitesResponse, error) {
 	log.Printf("Received SupportedCiphersuites request")
-	return &pb.SupportedCiphersuitesResponse{Ciphersuites: []uint32{}}, nil
+	return &pb.SupportedCiphersuitesResponse{Ciphersuites: supportedCiphersuites}, nil
 }
 
 func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTestVectorRequest) (*pb.GenerateTestVectorResponse, error) {
@@ -73,10 +73,13 @@ var (
 
 func init() {
 	flag.IntVar(&portOpt, "port", 50051, "port to listen on")
+	flag.Parse()
 }
 
 func main() {
 	port := fmt.Sprintf(":%d", portOpt)
+	log.Printf("Listening on %s", port)
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

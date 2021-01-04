@@ -8,6 +8,8 @@ PROTO_DIR=proto
 PROTO_NAME=mls_client
 PROTO_FILE=${PROTO_NAME}.proto
 PROTO_GO=${PROTO_DIR}/${PROTO_NAME}.pb.go ${PROTO_DIR}/${PROTO_NAME}_grpc.pb.go
+GO_CLIENT_BINARY=go-mock-client/go-mock-client
+TEST_RUNNER_BINARY=test-runner/test-runner
 
 PHONY: go-tools run-go run-test clean
 
@@ -25,20 +27,28 @@ ${PROTO_GO}: ${PROTO_DIR}/${PROTO_FILE}
 		     ${PROTO_FILE}
 
 # Run mock clients (gRPC servers) in various languages
-run-go: ${PROTO_GO}
-	go run go-mock-client/main.go
+${GO_CLIENT_BINARY}: ${PROTO_GO} go-mock-client/*.go
+	cd go-mock-client && go build
+
+run-go: ${GO_CLIENT_BINARY}
+	${GO_CLIENT_BINARY} -port 50001
 
 run-cpp: ${PROTO_DIR}/${PROTO_FILE}
 	make -C cpp-mock-client run
 
 run-rs:
-	cd rust-mock-client && cargo run
+	cd rust-mock-client && cargo run -- -p 50003
 
 # Run the test runner
-run-test: ${PROTO_GO}
-	go run test-runner/main.go
+${TEST_RUNNER_BINARY}: ${PROTO_GO} test-runner/*.go
+	cd test-runner && go build
+
+run-test: ${TEST_RUNNER_BINARY}
+	${TEST_RUNNER_BINARY}
 
 clean:
 	rm -f ${PROTO_GO}
+	rm -f ${GO_CLIENT_BINARY}
+	rm -f ${TEST_RUNNER_BINARY}
 	make -C cpp-mock-client cclean
 	cd rust-mock-client && cargo clean

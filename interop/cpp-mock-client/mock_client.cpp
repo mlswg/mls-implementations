@@ -1,6 +1,9 @@
 #include <memory>
 #include <string>
+#include <sstream>
+#include <iostream>
 
+#include <gflags/gflags.h>
 #include <grpcpp/grpcpp.h>
 
 #include "mls_client.grpc.pb.h"
@@ -76,17 +79,22 @@ class MLSClientImpl final : public MLSClient::Service
 
 const std::string MLSClientImpl::fixed_test_vector = {test_vector.begin(), test_vector.end()};
 
+DEFINE_uint64(port, 50051, "Port to listen on");
+
 int
-main()
+main(int argc, char *argv[])
 {
-  std::string server_address("0.0.0.0:50051");
-  MLSClientImpl service;
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  auto service = MLSClientImpl{};
+  auto server_address = (std::stringstream{} << "0.0.0.0:" << FLAGS_port).str();
 
   grpc::EnableDefaultHealthCheckService(true);
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&service);
 
+  std::cout << "Listening on " << server_address << std::endl;
   std::unique_ptr<Server> server(builder.BuildAndStart());
   server->Wait();
 

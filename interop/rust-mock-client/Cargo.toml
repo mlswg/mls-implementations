@@ -8,6 +8,7 @@ edition = "2018"
 tonic = "0.3"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros"] }
+clap = "3.0.0-beta.2"
 
 [build-dependencies]
 tonic-build = "0.3"

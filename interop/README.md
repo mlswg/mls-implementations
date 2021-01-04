@@ -9,7 +9,7 @@ servers) in C++, Go, and Rust.
 ## Quickstart
 
 ```bash
-# Start up a client
+# Start the clients in different windows
 make run-go   # ... in Go
 make run-cpp  # ... in C++
 make run-rs   # ... in Rust
@@ -17,9 +17,8 @@ make run-rs   # ... in Rust
 # Invoke the test runner against that client
 make run-test
 
-# You should get an output of the following form, depending on 
-# which client you started:
-2020/12/16 17:44:07 Client name: Mock-Go
-2020/12/16 17:44:07 Client name: Mock-C++
-2020/12/16 17:44:07 Client name: Mock-Rust
+# You should get an output of the following form
+2021/01/01 17:26:09 Connected to: name=[Mock-Go] suites=[[41120 41377]]
+2021/01/01 17:26:09 Connected to: name=[Mock-C++] suites=[[41120 41377]]
+2021/01/01 17:26:09 Connected to: name=[Mock-Rust] suites=[[41120 41377]]
 ```
