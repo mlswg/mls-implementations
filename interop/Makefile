@@ -11,7 +11,7 @@ PROTO_GO=${PROTO_DIR}/${PROTO_NAME}.pb.go ${PROTO_DIR}/${PROTO_NAME}_grpc.pb.go
 GO_CLIENT_BINARY=go-mock-client/go-mock-client
 TEST_RUNNER_BINARY=test-runner/test-runner
 
-PHONY: go-tools run-go run-test clean
+.PHONY: go-tools run-go run-test clean
 
 # Install tools for generating Go library
 go-tools:
