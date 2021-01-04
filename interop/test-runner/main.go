@@ -147,10 +147,10 @@ func main() {
 		log.Printf("Connected to [%s] @ [%s]", clients[i].name, addr)
 	}
 
-	// Build a ciphersuite compatibility matrix.  Entry `i` is the set of suites
-	// that client `i` has in common with any other client.  This tells us what
-	// cases that client needs to generate in order to test all cases with other
-	// clients.
+	// Build a ciphersuite compatibility matrix.  Each client's `compat` set
+	// contains the ciphersuites that it shares with *any* other client under
+	// test.  This tells us what cases that client needs to generate in order to
+	// test all cases with other clients.
 	for _, client := range clients {
 		for _, other := range clients {
 			client.AddCompat(other)

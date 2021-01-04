@@ -105,7 +105,6 @@ impl MlsClient for MlsClientImpl {
         println!("{} test vector request", type_msg);
 
         if (obj.test_vector != TEST_VECTOR) {
-            println!("{:?} != {:?}", obj.test_vector, TEST_VECTOR);
             return Err(tonic::Status::new(tonic::Code::InvalidArgument, "Invalid test vector"))
         }
 
