@@ -3,5 +3,12 @@
     "localhost:50001",
     "localhost:50002",
     "localhost:50003"
+  ],
+  "test_vectors": [
+    "tree_math",
+    "encryption",
+    "key_schedule",
+    "treekem",
+    "messages"
   ]
 }

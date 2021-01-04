@@ -1,7 +1,7 @@
-#include <memory>
-#include <string>
-#include <sstream>
 #include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
 
 #include <gflags/gflags.h>
 #include <grpcpp/grpcpp.h>
@@ -16,9 +16,9 @@ using grpc::StatusCode;
 using namespace mls_client;
 
 static constexpr char implementation_name[] = "Mock-C++";
-static constexpr std::array<uint32_t, 2> supported_ciphersuites = {0xA0A0, 0xA1A1};
-static constexpr TestVectorType test_vector_type = TestVectorType::TREE_MATH;
-static constexpr std::array<char, 4> test_vector = {0, 1, 2, 3};
+static constexpr std::array<uint32_t, 2> supported_ciphersuites = { 0xA0A0,
+                                                                    0xA1A1 };
+static constexpr std::array<char, 4> test_vector = { 0, 1, 2, 3 };
 
 class MLSClientImpl final : public MLSClient::Service
 {
@@ -33,9 +33,10 @@ class MLSClientImpl final : public MLSClient::Service
     return Status::OK;
   }
 
-  Status SupportedCiphersuites(ServerContext* /* context */,
-              const SupportedCiphersuitesRequest* /* request */,
-              SupportedCiphersuitesResponse* reply) override
+  Status SupportedCiphersuites(
+    ServerContext* /* context */,
+    const SupportedCiphersuitesRequest* /* request */,
+    SupportedCiphersuitesResponse* reply) override
   {
     std::cout << "Got SupportedCiphersuites request" << std::endl;
     reply->clear_ciphersuites();
@@ -46,12 +47,38 @@ class MLSClientImpl final : public MLSClient::Service
   }
 
   Status GenerateTestVector(ServerContext* /* context */,
-              const GenerateTestVectorRequest* request,
-              GenerateTestVectorResponse* reply) override
+                            const GenerateTestVectorRequest* request,
+                            GenerateTestVectorResponse* reply) override
   {
     std::cout << "Got GenerateTestVector request" << std::endl;
-    if (request->test_vector_type() != test_vector_type) {
-      return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
+    switch (request->test_vector_type()) {
+      case TestVectorType::TREE_MATH: {
+        std::cout << "Tree math test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::ENCRYPTION: {
+        std::cout << "Encryption test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::KEY_SCHEDULE: {
+        std::cout << "Key schedule test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::TREEKEM: {
+        std::cout << "TreeKEM test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::MESSAGES: {
+        std::cout << "Messages test vector request" << std::endl;
+        break;
+      }
+
+      default:
+        return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
     }
 
     std::cout << "  ... ok" << std::endl;
@@ -60,12 +87,38 @@ class MLSClientImpl final : public MLSClient::Service
   }
 
   Status VerifyTestVector(ServerContext* /* context */,
-              const VerifyTestVectorRequest* request,
-              VerifyTestVectorResponse* /* reply */) override
+                          const VerifyTestVectorRequest* request,
+                          VerifyTestVectorResponse* /* reply */) override
   {
     std::cout << "Got VerifyTestVector request" << std::endl;
-    if (request->test_vector_type() != test_vector_type) {
-      return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
+    switch (request->test_vector_type()) {
+      case TestVectorType::TREE_MATH: {
+        std::cout << "Tree math test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::ENCRYPTION: {
+        std::cout << "Encryption test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::KEY_SCHEDULE: {
+        std::cout << "Key schedule test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::TREEKEM: {
+        std::cout << "TreeKEM test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::MESSAGES: {
+        std::cout << "Messages test vector request" << std::endl;
+        break;
+      }
+
+      default:
+        return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
     }
 
     if (request->test_vector() != fixed_test_vector) {
@@ -74,15 +127,15 @@ class MLSClientImpl final : public MLSClient::Service
 
     return Status::OK;
   }
-
 };
 
-const std::string MLSClientImpl::fixed_test_vector = {test_vector.begin(), test_vector.end()};
+const std::string MLSClientImpl::fixed_test_vector = { test_vector.begin(),
+                                                       test_vector.end() };
 
 DEFINE_uint64(port, 50051, "Port to listen on");
 
 int
-main(int argc, char *argv[])
+main(int argc, char* argv[])
 {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 

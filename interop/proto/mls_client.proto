@@ -34,13 +34,16 @@ message SupportedCiphersuitesResponse {
 // rpc GenerateTestVector
 enum TestVectorType {
   TREE_MATH = 0;
-  // TODO continue
+  ENCRYPTION = 1;
+  KEY_SCHEDULE = 2;
+  TREEKEM = 3;
+  MESSAGES = 4;
 }
 
 // Generation parameters that are not needed for a given test type are ignored
 message GenerateTestVectorRequest {
   TestVectorType test_vector_type = 1;
-  uint32 ciphersuite = 2; // Actually uint16
+  uint32 cipher_suite = 2; // Actually uint16
   uint32 n_leaves = 3;
   uint32 n_generations = 4;
   uint32 n_epochs = 5;
