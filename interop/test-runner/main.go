@@ -16,14 +16,27 @@ import (
 )
 
 type RunConfig struct {
-	Clients []string `json:"clients"`
+	Clients     []string `json:"clients"`
+	TestVectors []string `json:"test_vectors,omitempty"`
+}
+
+type TestVectorResult struct {
+	Generator   string `json:"generator"`
+	Verifier    string `json:"verifier"`
+	CipherSuite uint32 `json:"cipher_suite,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+type TestResults struct {
+	TestVectors map[string][]TestVectorResult `json:"test_vectors"`
 }
 
 type Client struct {
-	conn         *grpc.ClientConn
-	rpc          pb.MLSClientClient
-	name         string
-	cipherSuites []uint32
+	conn      *grpc.ClientConn
+	rpc       pb.MLSClientClient
+	name      string
+	supported map[uint32]bool
+	compat    map[uint32]bool
 }
 
 func NewClient(addr string) (*Client, error) {
@@ -56,8 +69,23 @@ func NewClient(addr string) (*Client, error) {
 	}
 
 	c.name = nr.GetName()
-	c.cipherSuites = scr.GetCiphersuites()
+	c.supported = map[uint32]bool{}
+	for _, suite := range scr.GetCiphersuites() {
+		c.supported[suite] = true
+	}
+	c.compat = map[uint32]bool{}
+
 	return c, nil
+}
+
+func (c *Client) AddCompat(other *Client) {
+	for suite := range other.supported {
+		if !c.supported[suite] {
+			continue
+		}
+
+		c.compat[suite] = true
+	}
 }
 
 var (
@@ -66,7 +94,36 @@ var (
 
 func init() {
 	flag.StringVar(&configOpt, "config", "config.json", "config file name")
+	flag.Parse()
 }
+
+var (
+	testVectorType = map[string]pb.TestVectorType{
+		"tree_math":    pb.TestVectorType_TREE_MATH,
+		"encryption":   pb.TestVectorType_ENCRYPTION,
+		"key_schedule": pb.TestVectorType_KEY_SCHEDULE,
+		"treekem":      pb.TestVectorType_TREEKEM,
+		"messages":     pb.TestVectorType_MESSAGES,
+	}
+
+	cipherSuiteDependent = map[pb.TestVectorType]bool{
+		pb.TestVectorType_TREE_MATH:    false,
+		pb.TestVectorType_ENCRYPTION:   true,
+		pb.TestVectorType_KEY_SCHEDULE: true,
+		pb.TestVectorType_TREEKEM:      true,
+		pb.TestVectorType_MESSAGES:     false,
+	}
+
+	testVectorParams = struct {
+		NLeaves      uint32
+		NGenerations uint32
+		NEpochs      uint32
+	}{
+		NLeaves:      10,
+		NGenerations: 10,
+		NEpochs:      10,
+	}
+)
 
 func main() {
 	// Load and parse the config
@@ -86,39 +143,98 @@ func main() {
 		clients[i], err = NewClient(addr)
 		chk(fmt.Sprintf("Failure to connect to client [%s]", addr), err)
 		defer clients[i].conn.Close()
+
+		log.Printf("Connected to [%s] @ [%s]", clients[i].name, addr)
 	}
 
-	// Announce the connected clients
+	// Build a ciphersuite compatibility matrix.  Entry `i` is the set of suites
+	// that client `i` has in common with any other client.  This tells us what
+	// cases that client needs to generate in order to test all cases with other
+	// clients.
 	for _, client := range clients {
-		log.Printf("Connected to: name=[%s] suites=[%v]", client.name, client.cipherSuites)
+		for _, other := range clients {
+			client.AddCompat(other)
+		}
 	}
 
-	/*
-		// Get client name
-		nr, err := c.Name(ctx, &pb.NameRequest{})
-		chk("name", err)
-		log.Printf("Client name: %s", nr.GetName())
+	// Run each requested test vector across each pair of clients
+	// NB(RLB): You could reorder these operations a bunch of different ways.  Do
+	// all the generations before the verifications, do everything in parallel,
+	// etc.
+	results := TestResults{}
+	results.TestVectors = map[string][]TestVectorResult{}
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	for _, typeString := range config.TestVectors {
+		typeVal, ok := testVectorType[typeString]
+		if !ok {
+			log.Fatalf("Invalid test vector type [%s]", typeString)
+		}
 
-		// Get client's supported ciphersuites
-		scr, err := c.SupportedCiphersuites(ctx, &pb.SupportedCiphersuitesRequest{})
-		chk("supported ciphersuites", err)
-		log.Printf("Supported ciphersuites: %+v", scr.Ciphersuites)
+		tvResults := []TestVectorResult{}
+		for _, generator := range clients {
+			// Generate test vectors for all ciphersuites (if required)
+			generatedVectors := map[uint32][]byte{0: []byte{}}
+			if cipherSuiteDependent[typeVal] {
+				delete(generatedVectors, 0)
+				for suite := range generator.compat {
+					generatedVectors[suite] = []byte{}
+				}
+			}
 
-		// Generate a test vector
-		gtvr, err := c.GenerateTestVector(ctx, &pb.GenerateTestVectorRequest{
-			TestVectorType: pb.TestVectorType_TREE_MATH,
-		})
-		chk("generate test vector", err)
-		log.Printf("Generated test vector: %x", gtvr.TestVector)
+			for suite := range generatedVectors {
+				genReq := &pb.GenerateTestVectorRequest{
+					TestVectorType: typeVal,
+					CipherSuite:    suite,
+					NLeaves:        testVectorParams.NLeaves,
+					NGenerations:   testVectorParams.NGenerations,
+					NEpochs:        testVectorParams.NEpochs,
+				}
+				genResp, err := generator.rpc.GenerateTestVector(ctx, genReq)
+				if err != nil {
+					log.Printf("Error generating test vector [%s] [%s] [%v]", typeString, generator.name, err)
+					continue
+				}
 
-		// Verify a test vector
-		_, err = c.VerifyTestVector(ctx, &pb.VerifyTestVectorRequest{
-			TestVectorType: pb.TestVectorType_TREE_MATH,
-			TestVector:     gtvr.TestVector,
-		})
-		chk("verify test vector", err)
-		log.Printf("Verified test vector")
-	*/
+				generatedVectors[suite] = genResp.TestVector
+			}
+
+			// Verify test vectors for each supported ciphersuite with other clients
+			for _, verifier := range clients {
+				for suite, testVector := range generatedVectors {
+					if suite != 0 && !verifier.supported[suite] {
+						continue
+					}
+
+					if len(testVector) == 0 {
+						// This indicates that there was an error generating the vector
+						continue
+					}
+
+					verReq := &pb.VerifyTestVectorRequest{TestVectorType: typeVal, TestVector: testVector}
+					_, err := verifier.rpc.VerifyTestVector(ctx, verReq)
+
+					errStr := ""
+					if err != nil {
+						errStr = err.Error()
+					}
+
+					tvResults = append(tvResults, TestVectorResult{
+						Generator:   generator.name,
+						CipherSuite: suite,
+						Verifier:    verifier.name,
+						Error:       errStr,
+					})
+				}
+			}
+		}
+
+		results.TestVectors[typeString] = tvResults
+	}
+
+	resultsJSON, err := json.MarshalIndent(results, "", "  ")
+	chk("Error marshaling results", err)
+	fmt.Println(string(resultsJSON))
+
 }
 
 func chk(message string, err error) {

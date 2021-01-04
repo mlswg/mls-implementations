@@ -1,14 +1,14 @@
 BUILD_DIR=build
 APP_NAME=mock_client
 
-PHONY: all run format clean cclean
+.PHONY: all run format clean cclean
 
 all: ${BUILD_DIR}/${APP_NAME}
 
 ${BUILD_DIR}:
 	cmake -B${BUILD_DIR} .
 
-${BUILD_DIR}/${APP_NAME}: ${BUILD_DIR}
+${BUILD_DIR}/${APP_NAME}: ${BUILD_DIR} *.cpp
 	cmake --build ${BUILD_DIR} --target ${APP_NAME}
 
 run: ${BUILD_DIR}/${APP_NAME}

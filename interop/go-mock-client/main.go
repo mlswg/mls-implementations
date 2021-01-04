@@ -42,7 +42,23 @@ func (mc *MockClient) SupportedCiphersuites(ctx context.Context, req *pb.Support
 func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTestVectorRequest) (*pb.GenerateTestVectorResponse, error) {
 	log.Printf("Received GenerateTestVector request")
 
-	if req.TestVectorType != testVectorType {
+	switch req.TestVectorType {
+	case pb.TestVectorType_TREE_MATH:
+		log.Printf("Tree math test vector request")
+
+	case pb.TestVectorType_ENCRYPTION:
+		log.Printf("Encryption test vector request")
+
+	case pb.TestVectorType_KEY_SCHEDULE:
+		log.Printf("Key schedule test vector request")
+
+	case pb.TestVectorType_TREEKEM:
+		log.Printf("TreeKEM test vector request")
+
+	case pb.TestVectorType_MESSAGES:
+		log.Printf("Messages test vector request")
+
+	default:
 		return nil, status.Error(codes.InvalidArgument, "Invalid test vector type")
 	}
 
@@ -52,7 +68,23 @@ func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTe
 func (mc *MockClient) VerifyTestVector(ctx context.Context, req *pb.VerifyTestVectorRequest) (*pb.VerifyTestVectorResponse, error) {
 	log.Printf("Received VerifyTestVector request")
 
-	if req.TestVectorType != testVectorType {
+	switch req.TestVectorType {
+	case pb.TestVectorType_TREE_MATH:
+		log.Printf("Tree math test vector request")
+
+	case pb.TestVectorType_ENCRYPTION:
+		log.Printf("Encryption test vector request")
+
+	case pb.TestVectorType_KEY_SCHEDULE:
+		log.Printf("Key schedule test vector request")
+
+	case pb.TestVectorType_TREEKEM:
+		log.Printf("TreeKEM test vector request")
+
+	case pb.TestVectorType_MESSAGES:
+		log.Printf("Messages test vector request")
+
+	default:
 		return nil, status.Error(codes.InvalidArgument, "Invalid test vector type")
 	}
 
