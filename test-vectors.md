@@ -5,6 +5,32 @@ MLS stack.  Each test harness should have a way to produce and verify test
 vectors of a few kinds.  In this document we specify the format for test vectors
 and how they are verified.
 
+The idea here is to test the cryptographic operations underlying MLS without the
+complexity of the full protocol.  We tackle the overall cryptographic operation
+in pieces:
+
+```
+                           epoch_secret
+                                |
+|\ Ratchet                      |                            Secret /|
+| \ Tree                        |                             Tree / |
+|  \                            |                                 /  |
+|   \                           V                                /   |
+|    --> commit_secret --> epoch_secret --> encryption_secret -->    |
+|   /                           |                                \   |
+|  /                            |                                 \  |
+| /                             |                                  \ |
+|/                              |                                   \|
+                                V
+                           epoch_secret
+
+<-------------> <----------------------------------> <--------------->
+    TreeKEM                KeySchedule                   Encryption
+```
+
+The `TreeMath` and `Messages` testvectors verify basic tree math operations and
+the syntax of the messages used for MLS (independent of semantics).
+
 ## Tree Math
 
 Parameters:
