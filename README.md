@@ -17,6 +17,6 @@ For general discussions of the MLS specifications (as opposed to implementations
 
 [List of existing implementations](https://github.com/mlswg/mls-implementations/blob/master/implementation_list.md)
 
-[Test vectors](https://github.com/mlswg/mls-implementations/blob/master/test_vectors/README.md)
+[Test vectors](test-vectors.md)
 
 [Status of implementations against test vectors](https://docs.google.com/spreadsheets/d/1SBIpl6NAr-HbHeVcOiNtNfAAFqTEQX4dK7_BrgEF1xc/edit#gid=0)
