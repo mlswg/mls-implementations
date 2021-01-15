@@ -31,6 +31,12 @@ in pieces:
 The `TreeMath` and `Messages` testvectors verify basic tree math operations and
 the syntax of the messages used for MLS (independent of semantics).
 
+### Representation
+Test vectors are JSON serialized.
+`optional<type>` is serialized as the value itself or `null` if not present.
+MLS structs are binary encoded according to spec and represented as hex-encoded
+strings in JSON.
+
 ## Tree Math
 
 Parameters:
@@ -39,18 +45,20 @@ Parameters:
 Format:
 
 ```
-struct {
-  uint32 n_leaves;
-  uint32 root<0..2^32-1>;
-  uint32 left<0..2^32-1>;
-  uint32 right<0..2^32-1>;
-  uint32 parent<0..2^32-1>;
-  uint32 sibling<0..2^32-1>;
-} TreeMathTestVector;
+{
+  "n_leaves": /* uint32 */,
+  "n_nodes": /* uint32 */,
+  "root": [ /* array of uint32 */ ],
+  "left": [ /* array of optional<uint32> */ ],
+  "right": [ /* array of optional<uint32> */ ],
+  "parent": [ /* array of optional<uint32> */ ],
+  "sibling": [ /* array of optional<uint32> */ ]
+}
 ```
 
 Verification:
 
+* `n_nodes` is the number of nodes in the tree with `n_leaves` leaves
 * `root[i]` is the root node index of the tree with `i+1` leaves
 * `left[i]` is the node index of the left child of the node with index `i` in a
   tree with `n_leaves` leaves
@@ -70,44 +78,59 @@ Parameters:
 
 Format:
 
-```
-struct {
-  opaque data<0..255>;
-} CryptoValue;
-
-struct {
-  CryptoValue key;
-  CryptoValue nonce;
-} KeyAndNonce;
-
-struct {
-  KeyAndNonce steps<0..2^32-1>;
-} HashRatchetSequence;
-
-struct {
-  CipherSuite cipher_suite;
-  CryptoValue encryption_secret;  // chosen by generator
-  CryptoValue sender_data_secret; // chosen by generator
-  
-  HashRatchetSequence handshake_keys<0..2^32-1>
-  HashRatchetSequence application_keys<0..2^32-1>
-
-  MLSCiphertext handshake_message;
-  MLSCiphertext application_message;
-} EncryptionTestVector;
+```text
+{
+  "cipher_suite": /* uint16 */,
+  "n_leaves": /* uint32 */,
+  "encryption_secret": /* hex-encoded binary data */,
+  "sender_data_secret": /* hex-encoded binary data */,
+  "sender_data_info": {
+    "ciphertext": /* hex-encoded binary data */,
+    "secrets": {
+      "key": /* hex-encoded binary data */,
+      "nonce": /* hex-encoded binary data */,
+    },
+  },
+  "leaves": [
+    {
+      "generations": /* uint32 */,
+      "handshake_keys": [ /* array with `generations` handshake keys and nonces */
+        {
+          "key": /* hex-encoded binary data */,
+          "nonce": /* hex-encoded binary data */,
+        },
+        ...
+      ],
+      "application_keys": [ /* array with `generations` application keys and nonces */
+        {
+          "key": /* hex-encoded binary data */,
+          "nonce": /* hex-encoded binary data */,
+        },
+        ...
+      ],
+      "messages": [
+        /* array with `generations` TLS encoded MLSPlaintext/MLSCiphertext pairs. */
+        {
+          "plaintext": /* hex-encoded binary data */,
+          "ciphertext": /* hex-encoded binary data */,
+        },
+        ...
+      ],
+    }
+  ]
+}
 ```
 
 Verification:
 
-* For all `N`, `j`...
-  * `handshake_keys[N][j].key = ratchet_key_[2*N]_[j]` 
-  * `handshake_keys[N][j].nonce = ratchet_nonce_[2*N]_[j]` 
-  * ... underneath `handshake_ratchet_secret_[N]_[0]`
-  * ... and likewise for `application_keys` under `application_ratchet_secret_[N]_[0]`
-* `handshake_message` decrypts successfully with the key and nonce indicated in
-  the sender data
-* `application_message` decrypts successfully with the key and nonce indicated in
-  the sender data
+For all `N` entries in the `leaves` and all generations `j`
+* `leaves[N].handshake_keys[j].key = handshake_ratchet_key_[2*N]_[j]`
+* `leaves[N].handshake_keys[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
+* `leaves[N].application_keys[j].key = application_ratchet_key_[2*N]_[j]`
+* `leaves[N].application_keys[j].nonce = application_ratchet_nonce_[2*N]_[j]`
+* `sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)`
+* `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)`
+* `leaves[N].messages[j].ciphertext` decrypts successfully for leaf `N` in generation `j`
 
 The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes are
 tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
