@@ -86,10 +86,8 @@ Format:
   "sender_data_secret": /* hex-encoded binary data */,
   "sender_data_info": {
     "ciphertext": /* hex-encoded binary data */,
-    "secrets": {
-      "key": /* hex-encoded binary data */,
-      "nonce": /* hex-encoded binary data */,
-    }
+    "key": /* hex-encoded binary data */,
+    "nonce": /* hex-encoded binary data */,
   },
   "leaves": [
     {
