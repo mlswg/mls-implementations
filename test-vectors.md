@@ -32,10 +32,10 @@ The `TreeMath` and `Messages` testvectors verify basic tree math operations and
 the syntax of the messages used for MLS (independent of semantics).
 
 ### Representation
-Test vectors are JSON serialized.
-`optional<type>` is serialized as the value itself or `null` if not present.
-MLS structs are binary encoded according to spec and represented as hex-encoded
-strings in JSON.
+
+Test vectors are JSON serialized.  `optional<type>` is serialized as the value
+itself or `null` if not present.  MLS structs are binary encoded according to
+spec and represented as hex-encoded strings in JSON.
 
 ## Tree Math
 
@@ -86,36 +86,30 @@ Format:
   "sender_data_secret": /* hex-encoded binary data */,
   "sender_data_info": {
     "ciphertext": /* hex-encoded binary data */,
-    "secrets": {
-      "key": /* hex-encoded binary data */,
-      "nonce": /* hex-encoded binary data */,
-    },
+    "key": /* hex-encoded binary data */,
+    "nonce": /* hex-encoded binary data */,
   },
   "leaves": [
     {
       "generations": /* uint32 */,
-      "handshake_keys": [ /* array with `generations` handshake keys and nonces */
+      "handshake": [ /* array with `generations` handshake keys and nonces */
         {
           "key": /* hex-encoded binary data */,
           "nonce": /* hex-encoded binary data */,
+          "plaintext": /* hex-encoded binary data */
+          "ciphertext": /* hex-encoded binary data */
         },
         ...
       ],
-      "application_keys": [ /* array with `generations` application keys and nonces */
+      "application": [ /* array with `generations` application keys and nonces */
         {
           "key": /* hex-encoded binary data */,
           "nonce": /* hex-encoded binary data */,
+          "plaintext": /* hex-encoded binary data */
+          "ciphertext": /* hex-encoded binary data */
         },
         ...
-      ],
-      "messages": [
-        /* array with `generations` TLS encoded MLSPlaintext/MLSCiphertext pairs. */
-        {
-          "plaintext": /* hex-encoded binary data */,
-          "ciphertext": /* hex-encoded binary data */,
-        },
-        ...
-      ],
+      ]
     }
   ]
 }
@@ -124,13 +118,24 @@ Format:
 Verification:
 
 For all `N` entries in the `leaves` and all generations `j`
-* `leaves[N].handshake_keys[j].key = handshake_ratchet_key_[2*N]_[j]`
-* `leaves[N].handshake_keys[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
-* `leaves[N].application_keys[j].key = application_ratchet_key_[2*N]_[j]`
-* `leaves[N].application_keys[j].nonce = application_ratchet_nonce_[2*N]_[j]`
+* `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`
+* `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
+* `leaves[N].handshake[j].plaintext` represents an MLSPlaintext containing a
+  handshake message (Proposal or Commit) from leaf `N`
+* `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object that
+  successfully decrypts to an MLSPlaintext equivalent to
+  `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
+  `j`.
+* `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`
+* `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
+* `leaves[N].application[j].plaintext` represents an MLSPlaintext containing
+  application data from leaf `N`
+* `leaves[N].application[j].ciphertext` represents an MLSCiphertext object that
+  successfully decrypts to an MLSPlaintext equivalent to
+  `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
+  `j`.
 * `sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)`
 * `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)`
-* `leaves[N].messages[j].ciphertext` decrypts successfully for leaf `N` in generation `j`
 
 The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes are
 tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
