@@ -152,43 +152,46 @@ Parameters:
 Format:
 
 ```
-struct {
-  MLSPlaintext commit;       // chosen by generator.  membership_tag and
-                             // confirmation_tag MUST be valid; otherwise 
-                             // content is only used for transcript.
-  CryptoValue tree_hash;     // chosen by generator
+{
+  "cipher_suite": /* uint16 */,
+  "group_id": /* hex-encoded binary data */,
+  "initial_tree_hash": /* hex-encoded binary data */,
+  "initial_init_secret": /* hex-encoded binary data */,
+  "epochs": [
+    {
+      // These fields are chosen by the generator.  The "commit" field contains
+      // TLS-serialized MLSPlaintext object.  The membership_tag and
+      // confirmation_tag in the MLSPlaintext MUST be valid; otherwise its
+      // content is only used for the transcript.
+      "commit": /* hex-encoded binary data */,
+      "tree_hash": /* hex-encoded binary data */,
+      "commit_secret": /* hex-encoded binary data */,
+      "psk_secret": /* hex-encoded binary data */,
+      
+      "confirmed_transcript_hash": /* hex-encoded binary data */,
+      "interim_transcript_hash": /* hex-encoded binary data */,
+      "group_context": /* hex-encoded binary data */,
+      
+      "joiner_secret": /* hex-encoded binary data */,
+      "welcome_secret": /* hex-encoded binary data */,
+      "epoch_secret": /* hex-encoded binary data */,
+      "init_secret": /* hex-encoded binary data */,
+      
+      "sender_data_secret": /* hex-encoded binary data */,
+      "encryption_secret": /* hex-encoded binary data */,
+      "exporter_secret": /* hex-encoded binary data */,
+      "authentication_secret": /* hex-encoded binary data */,
+      "external_secret": /* hex-encoded binary data */,
+      "confirmation_key": /* hex-encoded binary data */,
+      "membership_key": /* hex-encoded binary data */,
+      "resumption_secret": /* hex-encoded binary data */,
 
-  CryptoValue commit_secret; // chosen by generator
-  CryptoValue psk_secret;    // chosen by generator
-
-  CryptoValue confirmed_transcript_hash;
-  CryptoValue interim_transcript_hash;
-  CryptoValue group_context;
-
-  CryptoValue joiner_secret;
-  CryptoValue welcome_secret;
-  CryptoValue epoch_secret;
-  CryptoValue init_secret;
-
-  CryptoValue sender_data_secret;
-  CryptoValue encryption_secret;
-  CryptoValue exporter_secret;
-  CryptoValue authentication_secret;
-  CryptoValue external_secret;
-  CryptoValue confirmation_key;
-  CryptoValue membership_key;
-  CryptoValue resumption_secret;
-
-  HPKEPublicKey external_pub;
-} Epoch;
-
-struct {
-  CipherSuite cipher_suite;
-  CryptoValue group_id;
-  CryptoValue initial_tree_hash;    // chosen by generator
-  CryptoValue initial_init_secret;  // chosen by generator
-  Epoch epochs<0..2^32-1>;
-} KeyScheduleTestVector;
+      // A TLS-serialized HPKEPublicKey object
+      "external_pub": /* hex-encoded binary data */
+    },
+    ...
+  ]
+}
 ```
 
 Verification:
@@ -219,30 +222,34 @@ Parameters:
 * Number of leaves in the test tree
 
 Format:
+```text
+{
+  "cipher_suite": /* uint16 */,
+
+  "ratchet_tree_before": /* hex-encoded binary data */, // chosen by generator
+  "tree_hash_before": /* hex-encoded binary data */,
+  
+  "add_sender": /* uint32 */,                           // chosen by generator
+  "my_key_package": /* hex-encoded binary data */,      // chosen by generator
+  "my_path_secret": /* hex-encoded binary data */,      // chosen by generator
+  
+  "root_secret_after_add": /* hex-encoded binary data */
+
+  "update_sender": /* uint32 */,                        // chosen by generator
+  "update_path": /* hex-encoded binary data */,         // chosen by generator
+
+  "root_secret_after_update": /* hex-encoded binary data */
+
+  "ratchet_tree_after": /* hex-encoded binary data */,
+  "tree_hash_after": /* hex-encoded binary data */
+}
 ```
-struct {
-  optional<Node> nodes<1..2^32-1>;
-} RatchetTree;
 
-struct {
-  CipherSuite cipher_suite;
-
-  RatchetTree ratchet_tree_before; // chosen by generator
-  CryptoValue tree_hash_before;
-
-  uint32 add_sender;               // chosen by generator
-  KeyPackage my_key_package;       // chosen by generator
-  CryptoValue my_path_secret;      // chosen by generator
-
-  uint32 update_sender;            // chosen by generator
-  UpdatePath update_path;          // chosen by generator
-
-  CryptoValue root_secret;
-  RatchetTree tree_after;
-  CryptoValue tree_hash_after;
-
-} TreeKEMTestVector;
-```
+Some of the binary fields contain TLS-serialized objects:
+* `ratchet_tree_before` and `ratchet_tree_after` contain serialized ratchet
+  trees, as in [the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
+* `my_key_package` contains a KeyPackage object
+* `update_path` contains an UpdatePath object
 
 Verification:
 * Verify that the tree hash of `tree_before` equals `tree_hash_before`
@@ -251,8 +258,9 @@ Verification:
 * Identify the test participant's location in the tree using `my_key_package`
 * Initialize the private state of the tree by setting `my_path_secret` at the
   common ancestor between the test participant's leaf and `add_sender`
+* Verify that the root secret for the initial tree matches `root_secret_after_add`
 * Process the `update_path` to get a new root secret and update the tree
-* Verify that the new root root secret matches `root_secret`
+* Verify that the new root root secret matches `root_secret_after_update`
 * Verify that the tree now matches `tree_after`
 
 ## Messages
@@ -262,38 +270,36 @@ Parameters:
 
 Format:
 ```
-struct {
-  opaque data<0..2^32-1>;
-} Message;
+{
+  "key_package": /* serialized KeyPackage */,
+  "capabilities": /* serialized Capabilities */,
+  "lifetime": /* serialized {uint64 not_before; uint64 not_after;} */,
+  "ratchet_tree": /* serialized optional<Node> ratchet_tree<1..2^32-1>; */,
 
-struct {
-  Message key_package;                // KeyPackage
-  Message capabilities;               // Capabilities
-  Message lifetime;                   // uint64 not_before; uint64 not_after;
-  Message ratchet_tree;               // optional<Node> ratchet_tree<1..2^32-1>;
+  "group_info": /* serialized GroupInfo */,
+  "group_secrets": /* serialized GroupSecrets */,
+  "welcome": /* serialized Welcome */,
 
-  Message group_info;                 // GroupInfo
-  Message group_secrets;              // GroupSecrets
-  Message welcome;                    // Welcome
+  "public_group_state": /* serialized PublicGroupState */,
 
-  Message public_group_state;         // PublicGroupState
+  "add_proposal": /* serialized Add */,
+  "update_proposal": /* serialized Update */,
+  "remove_proposal": /* serialized Remove */,
+  "pre_shared_key_proposal": /* serialized PreSharedKey */,
+  "re_init_proposal": /* serialized ReInit */,
+  "external_init_proposal": /* serialized ExternalInit */,
+  "app_ack_proposal": /* serialized AppAck */,
 
-  Message add_proposal;               // Add
-  Message update_proposal;            // Update
-  Message remove_proposal;            // Remove
-  Message pre_shared_key_proposal;    // PreSharedKey
-  Message re_init_proposal;           // ReInit
-  Message external_init_proposal;     // ExternalInit
-  Message app_ack_proposal;           // AppAck
+  "commit": /* serialized Commit */,
 
-  Message commit;                     // Commit
-
-  Message mls_plaintext_application;  // MLSPlaintext(ApplicationData)
-  Message mls_plaintext_proposal;     // MLSPlaintext(Proposal(*))
-  Message mls_plaintext_commit;       // MLSPlaintext(Commit)
-  Message mls_ciphertext;             // MLSCiphertext
-} MessagesTestVector;
+  "mls_plaintext_application": /* serialized MLSPlaintext(ApplicationData) */,
+  "mls_plaintext_proposal": /* serialized MLSPlaintext(Proposal(*)) */,
+  "mls_plaintext_commit": /* serialized MLSPlaintext(Commit) */,
+  "mls_ciphertext": /* serialized MLSCiphertext */,
+}
 ```
+
+As elsewhere, the serialized binary objects are hex-encoded.
 
 Verification:
 * The contents of each field must decode using the corresponding structure
