@@ -127,6 +127,134 @@ class MLSClientImpl final : public MLSClient::Service
 
     return Status::OK;
   }
+
+  // Ways to become a member of a group
+  Status CreateGroup(ServerContext* /* context */,
+                     const CreateGroupRequest* /* request */,
+                     CreateGroupResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status CreateKeyPackage(ServerContext* /* context */,
+                          const CreateKeyPackageRequest* /* request */,
+                          CreateKeyPackageResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status JoinGroup(ServerContext* /* context */,
+                   const JoinGroupRequest* /* request */,
+                   JoinGroupResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status ExternalJoin(ServerContext* /* context */,
+                      const ExternalJoinRequest* /* request */,
+                      ExternalJoinResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  // Operations using a group state
+  Status PublicGroupState(ServerContext* /* context */,
+                          const PublicGroupStateRequest* /* request */,
+                          PublicGroupStateResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status StateAuth(ServerContext* /* context */,
+                   const StateAuthRequest* /* request */,
+                   StateAuthResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status Export(ServerContext* /* context */,
+                const ExportRequest* /* request */,
+                ExportResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status Protect(ServerContext* /* context */,
+                 const ProtectRequest* /* request */,
+                 ProtectResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status Unprotect(ServerContext* /* context */,
+                   const UnprotectRequest* /* request */,
+                   UnprotectResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status StorePSK(ServerContext* /* context */,
+                  const StorePSKRequest* /* request */,
+                  StorePSKResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status AddProposal(ServerContext* /* context */,
+                     const AddProposalRequest* /* request */,
+                     ProposalResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status UpdateProposal(ServerContext* /* context */,
+                        const UpdateProposalRequest* /* request */,
+                        ProposalResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status RemoveProposal(ServerContext* /* context */,
+                        const RemoveProposalRequest* /* request */,
+                        ProposalResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status PSKProposal(ServerContext* /* context */,
+                     const PSKProposalRequest* /* request */,
+                     ProposalResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status ReInitProposal(ServerContext* /* context */,
+                        const ReInitProposalRequest* /* request */,
+                        ProposalResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status AppAckProposal(ServerContext* /* context */,
+                        const AppAckProposalRequest* /* request */,
+                        ProposalResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status Commit(ServerContext* /* context */,
+                const CommitRequest* /* request */,
+                CommitResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
+
+  Status HandleCommit(ServerContext* /* context */,
+                      const HandleCommitRequest* /* request */,
+                      HandleCommitResponse* /* response */) override
+  {
+    return Status::OK; // TODO
+  }
 };
 
 const std::string MLSClientImpl::fixed_test_vector = { test_vector.begin(),
