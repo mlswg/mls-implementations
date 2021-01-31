@@ -62,6 +62,9 @@ One pair of such methods for each test vector type (parameters):
 
 ### Operations using a group state:
 
+* Get PublicGroupState
+  * Inputs: (none)
+  * Outputs: PublicGroupState
 * Get state auth
   * Inputs: (none)
   * Outputs: authentication_secret
