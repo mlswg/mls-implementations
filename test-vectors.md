@@ -155,7 +155,6 @@ Format:
 {
   "cipher_suite": /* uint16 */,
   "group_id": /* hex-encoded binary data */,
-  "initial_tree_hash": /* hex-encoded binary data */,
   "initial_init_secret": /* hex-encoded binary data */,
   "epochs": [
     {
@@ -174,7 +173,6 @@ Format:
       
       "joiner_secret": /* hex-encoded binary data */,
       "welcome_secret": /* hex-encoded binary data */,
-      "epoch_secret": /* hex-encoded binary data */,
       "init_secret": /* hex-encoded binary data */,
       
       "sender_data_secret": /* hex-encoded binary data */,
