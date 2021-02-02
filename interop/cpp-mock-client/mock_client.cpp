@@ -67,6 +67,11 @@ class MLSClientImpl final : public MLSClient::Service
         break;
       }
 
+      case TestVectorType::TRANSCRIPT: {
+        std::cout << "Transcript test vector request" << std::endl;
+        break;
+      }
+
       case TestVectorType::TREEKEM: {
         std::cout << "TreeKEM test vector request" << std::endl;
         break;
@@ -104,6 +109,11 @@ class MLSClientImpl final : public MLSClient::Service
 
       case TestVectorType::KEY_SCHEDULE: {
         std::cout << "Key schedule test vector request" << std::endl;
+        break;
+      }
+
+      case TestVectorType::TRANSCRIPT: {
+        std::cout << "Transcript test vector request" << std::endl;
         break;
       }
 
