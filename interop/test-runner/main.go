@@ -106,6 +106,7 @@ var (
 		"tree_math":    pb.TestVectorType_TREE_MATH,
 		"encryption":   pb.TestVectorType_ENCRYPTION,
 		"key_schedule": pb.TestVectorType_KEY_SCHEDULE,
+		"transcript":   pb.TestVectorType_TRANSCRIPT,
 		"treekem":      pb.TestVectorType_TREEKEM,
 		"messages":     pb.TestVectorType_MESSAGES,
 	}
@@ -114,6 +115,7 @@ var (
 		pb.TestVectorType_TREE_MATH:    false,
 		pb.TestVectorType_ENCRYPTION:   true,
 		pb.TestVectorType_KEY_SCHEDULE: true,
+		pb.TestVectorType_TRANSCRIPT:   true,
 		pb.TestVectorType_TREEKEM:      true,
 		pb.TestVectorType_MESSAGES:     false,
 	}

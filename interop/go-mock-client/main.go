@@ -18,7 +18,6 @@ import (
 var (
 	implementationName    = "Mock-Go"
 	supportedCiphersuites = []uint32{0xA0A0, 0xA1A1}
-	testVectorType        = pb.TestVectorType_TREE_MATH
 	testVector            = []byte{0, 1, 2, 3}
 )
 
@@ -52,6 +51,9 @@ func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTe
 	case pb.TestVectorType_KEY_SCHEDULE:
 		log.Printf("Key schedule test vector request")
 
+	case pb.TestVectorType_TRANSCRIPT:
+		log.Printf("Transcript test vector request")
+
 	case pb.TestVectorType_TREEKEM:
 		log.Printf("TreeKEM test vector request")
 
@@ -77,6 +79,9 @@ func (mc *MockClient) VerifyTestVector(ctx context.Context, req *pb.VerifyTestVe
 
 	case pb.TestVectorType_KEY_SCHEDULE:
 		log.Printf("Key schedule test vector request")
+
+	case pb.TestVectorType_TRANSCRIPT:
+		log.Printf("Transcript test vector request")
 
 	case pb.TestVectorType_TREEKEM:
 		log.Printf("TreeKEM test vector request")

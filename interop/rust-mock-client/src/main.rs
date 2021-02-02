@@ -25,8 +25,9 @@ impl TryFrom<i32> for TestVectorType {
             0 => Ok(TestVectorType::TreeMath),
             1 => Ok(TestVectorType::Encryption),
             2 => Ok(TestVectorType::KeySchedule),
-            3 => Ok(TestVectorType::Treekem),
-            4 => Ok(TestVectorType::Messages),
+            3 => Ok(TestVectorType::Transcript),
+            4 => Ok(TestVectorType::Treekem),
+            5 => Ok(TestVectorType::Messages),
             _ => Err(()),
         }
     }
@@ -70,6 +71,7 @@ impl MlsClient for MlsClientImpl {
             Ok(TestVectorType::TreeMath) => "Tree math",
             Ok(TestVectorType::Encryption) => "Encryption",
             Ok(TestVectorType::KeySchedule) => "Key Schedule",
+            Ok(TestVectorType::Transcript) => "Transcript",
             Ok(TestVectorType::Treekem) => "TreeKEM",
             Ok(TestVectorType::Messages) => "Messages",
             Err(_) => {
@@ -96,6 +98,7 @@ impl MlsClient for MlsClientImpl {
             Ok(TestVectorType::TreeMath) => "Tree math",
             Ok(TestVectorType::Encryption) => "Encryption",
             Ok(TestVectorType::KeySchedule) => "Key Schedule",
+            Ok(TestVectorType::Transcript) => "Transcript",
             Ok(TestVectorType::Treekem) => "TreeKEM",
             Ok(TestVectorType::Messages) => "Messages",
             Err(_) => {

@@ -36,8 +36,9 @@ enum TestVectorType {
   TREE_MATH = 0;
   ENCRYPTION = 1;
   KEY_SCHEDULE = 2;
-  TREEKEM = 3;
-  MESSAGES = 4;
+  TRANSCRIPT = 3;
+  TREEKEM = 4;
+  MESSAGES = 5;
 }
 
 // Generation parameters that are not needed for a given test type are ignored
