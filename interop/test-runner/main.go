@@ -39,6 +39,11 @@ type Client struct {
 	compat    map[uint32]bool
 }
 
+func ctx() context.Context {
+	c, _ := context.WithTimeout(context.Background(), time.Second)
+	return c
+}
+
 func NewClient(addr string) (*Client, error) {
 	c := &Client{}
 	var err error
@@ -57,13 +62,12 @@ func NewClient(addr string) (*Client, error) {
 	c.rpc = pb.NewMLSClientClient(c.conn)
 
 	// Get the client's name and supported ciphersuites
-	ctx, _ := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	nr, err := c.rpc.Name(ctx, &pb.NameRequest{})
+	nr, err := c.rpc.Name(ctx(), &pb.NameRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	scr, err := c.rpc.SupportedCiphersuites(ctx, &pb.SupportedCiphersuitesRequest{})
+	scr, err := c.rpc.SupportedCiphersuites(ctx(), &pb.SupportedCiphersuitesRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +169,6 @@ func main() {
 	// etc.
 	results := TestResults{}
 	results.TestVectors = map[string][]TestVectorResult{}
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	for _, typeString := range config.TestVectors {
 		typeVal, ok := testVectorType[typeString]
 		if !ok {
@@ -191,7 +194,7 @@ func main() {
 					NGenerations:   testVectorParams.NGenerations,
 					NEpochs:        testVectorParams.NEpochs,
 				}
-				genResp, err := generator.rpc.GenerateTestVector(ctx, genReq)
+				genResp, err := generator.rpc.GenerateTestVector(ctx(), genReq)
 				if err != nil {
 					log.Printf("Error generating test vector [%s] [%s] [%v]", typeString, generator.name, err)
 					continue
@@ -213,7 +216,7 @@ func main() {
 					}
 
 					verReq := &pb.VerifyTestVectorRequest{TestVectorType: typeVal, TestVector: testVector}
-					_, err := verifier.rpc.VerifyTestVector(ctx, verReq)
+					_, err := verifier.rpc.VerifyTestVector(ctx(), verReq)
 
 					errStr := ""
 					if err != nil {
