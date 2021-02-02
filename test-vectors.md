@@ -203,7 +203,7 @@ Verification:
     * `epoch = i`
     * `tree_hash` as specified
     * `confirmed_transcript_hash` as specified
-    * `extension = {}`
+    * `extensions = {}`
   * Verify that group context matches the provided `group_context` value
   * Verify that the key schedule outputs are as specified given the following
     inputs:
@@ -221,7 +221,12 @@ Format:
 ```text
 {
   // Chosen by the generator
+  "group_id": /* hex-encoded binary data */,
+  "epoch": /* uint64 */,
+  "tree_hash_before": /* hex-encoded binary data */,
+  "confirmed_transcript_hash_before": /* hex-encoded binary data */,
   "interim_transcript_hash_before": /* hex-encoded binary data */,
+
   "membership_key": /* hex-encoded binary data */,
   "confirmation_key": /* hex-encoded binary data */,
   "commit": /* hex-encoded TLS-serialized MLSPlaintext(Commit) */
@@ -239,7 +244,12 @@ Verification:
 * Verify that `commit.confirmation_tag` is present and verifies using
   `confirmed_transcript_hash_after` and `confirmation_key`
 * Verify that `commit.membership_tag` is present and verifies using
-  `membership_key`
+  `membership_key` and a GroupContext object with the following contents:
+  * `group_id = group_id`
+  * `epoch = epoch`
+  * `tree_hash = tree_hash_before`
+  * `confirmed_transcript_hash = confirmed_transcript_hash_before`
+  * `extensions = {}`
 
 ## TreeKEM
 
