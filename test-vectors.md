@@ -84,6 +84,7 @@ Format:
   "n_leaves": /* uint32 */,
   "encryption_secret": /* hex-encoded binary data */,
   "sender_data_secret": /* hex-encoded binary data */,
+
   "sender_data_info": {
     "ciphertext": /* hex-encoded binary data */,
     "key": /* hex-encoded binary data */,
@@ -151,24 +152,23 @@ Parameters:
 
 Format:
 
-```
+```text
 {
   "cipher_suite": /* uint16 */,
+  
+  // Chosen by the generator
   "group_id": /* hex-encoded binary data */,
   "initial_init_secret": /* hex-encoded binary data */,
+
   "epochs": [
     {
-      // These fields are chosen by the generator.  The "commit" field contains
-      // TLS-serialized MLSPlaintext object.  The membership_tag and
-      // confirmation_tag in the MLSPlaintext MUST be valid; otherwise its
-      // content is only used for the transcript.
-      "commit": /* hex-encoded binary data */,
+      // Chosen by the generator
       "tree_hash": /* hex-encoded binary data */,
       "commit_secret": /* hex-encoded binary data */,
       "psk_secret": /* hex-encoded binary data */,
-      
       "confirmed_transcript_hash": /* hex-encoded binary data */,
-      "interim_transcript_hash": /* hex-encoded binary data */,
+      
+      // Computed values
       "group_context": /* hex-encoded binary data */,
       
       "joiner_secret": /* hex-encoded binary data */,
@@ -194,24 +194,52 @@ Format:
 
 Verification:
 * Initialize the first key schedule epoch for the group [as defined in the
-  specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation), using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the non-constant values.
+  specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation),
+  using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the
+  non-constant values.
 * For epoch `i`:
-  * Verify the `membership_tag` on the included commit using the
-    `membership_key` from the prior epoch
-  * Update the transcript hash with the provided commit message
   * Construct a GroupContext with the following contents:
-    * `group_id = group_id`
+    * `group_id` as specified
     * `epoch = i`
     * `tree_hash` as specified
-    * `confirmed_transcript_hash` as computed from the commit message
+    * `confirmed_transcript_hash` as specified
     * `extension = {}`
-  * Verify that the transcript hashes and group context are as specified
+  * Verify that group context matches the provided `group_context` value
   * Verify that the key schedule outputs are as specified given the following
     inputs:
-    * `init_key` from the prior epoch or `base_init_key`
+    * `init_key` from the prior epoch or `initial_init_secret`
     * `commit_secret` and `psk_secret` as specified
     * `GroupContext_[n]` as computed above
-  * Verify the `confirmation_tag` on the included commit
+
+## Commits and Transcript Hashes
+
+Parameters:
+* Ciphersuite
+
+Format:
+
+```text
+{
+  // Chosen by the generator
+  "interim_transcript_hash_before": /* hex-encoded binary data */,
+  "membership_key": /* hex-encoded binary data */,
+  "confirmation_key": /* hex-encoded binary data */,
+  "commit": /* hex-encoded TLS-serialized MLSPlaintext(Commit) */
+  
+  // Computed values
+  "confirmed_transcript_hash_after": /* hex-encoded binary data */,
+  "interim_transcript_hash_after": /* hex-encoded binary data */,
+}
+```
+
+Verification:
+* Verify that `confirmed_transcript_hash_after` and
+  `interim_transcript_hash_after` are the result of updating
+  `interim_transcript_hash_before` with `commit`
+* Verify that `commit.confirmation_tag` is present and verifies using
+  `confirmed_transcript_hash_after` and `confirmation_key`
+* Verify that `commit.membership_tag` is present and verifies using
+  `membership_key`
 
 ## TreeKEM
 
@@ -224,20 +252,20 @@ Format:
 {
   "cipher_suite": /* uint16 */,
 
-  "ratchet_tree_before": /* hex-encoded binary data */, // chosen by generator
+  // Chosen by the generator
+  "ratchet_tree_before": /* hex-encoded binary data */,
+  
+  "add_sender": /* uint32 */,
+  "my_key_package": /* hex-encoded binary data */,
+  "my_path_secret": /* hex-encoded binary data */,
+
+  "update_sender": /* uint32 */,
+  "update_path": /* hex-encoded binary data */,
+
+  // Computed values
   "tree_hash_before": /* hex-encoded binary data */,
-  
-  "add_sender": /* uint32 */,                           // chosen by generator
-  "my_key_package": /* hex-encoded binary data */,      // chosen by generator
-  "my_path_secret": /* hex-encoded binary data */,      // chosen by generator
-  
   "root_secret_after_add": /* hex-encoded binary data */
-
-  "update_sender": /* uint32 */,                        // chosen by generator
-  "update_path": /* hex-encoded binary data */,         // chosen by generator
-
   "root_secret_after_update": /* hex-encoded binary data */
-
   "ratchet_tree_after": /* hex-encoded binary data */,
   "tree_hash_after": /* hex-encoded binary data */
 }
