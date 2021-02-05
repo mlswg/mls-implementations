@@ -220,6 +220,8 @@ Format:
 
 ```text
 {
+  "cipher_suite": /* uint16 */,
+
   // Chosen by the generator
   "group_id": /* hex-encoded binary data */,
   "epoch": /* uint64 */,
