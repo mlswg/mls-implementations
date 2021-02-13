@@ -50,43 +50,44 @@ class MLSClientImpl final : public MLSClient::Service
                             const GenerateTestVectorRequest* request,
                             GenerateTestVectorResponse* reply) override
   {
-    std::cout << "Got GenerateTestVector request" << std::endl;
+    std::cout << "Got GenerateTestVector request: ";
     switch (request->test_vector_type()) {
       case TestVectorType::TREE_MATH: {
-        std::cout << "Tree math test vector request" << std::endl;
+        std::cout << "Tree math" << std::endl;
         break;
       }
 
       case TestVectorType::ENCRYPTION: {
-        std::cout << "Encryption test vector request" << std::endl;
+        std::cout << "Encryption" << std::endl;
         break;
       }
 
       case TestVectorType::KEY_SCHEDULE: {
-        std::cout << "Key schedule test vector request" << std::endl;
+        std::cout << "Key schedule" << std::endl;
         break;
       }
 
       case TestVectorType::TRANSCRIPT: {
-        std::cout << "Transcript test vector request" << std::endl;
+        std::cout << "Transcript" << std::endl;
         break;
       }
 
       case TestVectorType::TREEKEM: {
-        std::cout << "TreeKEM test vector request" << std::endl;
+        std::cout << "TreeKEM" << std::endl;
         break;
       }
 
       case TestVectorType::MESSAGES: {
-        std::cout << "Messages test vector request" << std::endl;
+        std::cout << "Messages" << std::endl;
         break;
       }
 
-      default:
+      default: {
+        std::cout << "Invalid" << std::endl;
         return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
+      }
     }
 
-    std::cout << "  ... ok" << std::endl;
     reply->set_test_vector(fixed_test_vector);
     return Status::OK;
   }
@@ -95,40 +96,42 @@ class MLSClientImpl final : public MLSClient::Service
                           const VerifyTestVectorRequest* request,
                           VerifyTestVectorResponse* /* reply */) override
   {
-    std::cout << "Got VerifyTestVector request" << std::endl;
+    std::cout << "Got VerifyTestVector request: ";
     switch (request->test_vector_type()) {
       case TestVectorType::TREE_MATH: {
-        std::cout << "Tree math test vector request" << std::endl;
+        std::cout << "Tree math" << std::endl;
         break;
       }
 
       case TestVectorType::ENCRYPTION: {
-        std::cout << "Encryption test vector request" << std::endl;
+        std::cout << "Encryption" << std::endl;
         break;
       }
 
       case TestVectorType::KEY_SCHEDULE: {
-        std::cout << "Key schedule test vector request" << std::endl;
+        std::cout << "Key schedule" << std::endl;
         break;
       }
 
       case TestVectorType::TRANSCRIPT: {
-        std::cout << "Transcript test vector request" << std::endl;
+        std::cout << "Transcript" << std::endl;
         break;
       }
 
       case TestVectorType::TREEKEM: {
-        std::cout << "TreeKEM test vector request" << std::endl;
+        std::cout << "TreeKEM" << std::endl;
         break;
       }
 
       case TestVectorType::MESSAGES: {
-        std::cout << "Messages test vector request" << std::endl;
+        std::cout << "Messages" << std::endl;
         break;
       }
 
-      default:
+      default: {
+        std::cout << "Invalid" << std::endl;
         return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
+      }
     }
 
     if (request->test_vector() != fixed_test_vector) {

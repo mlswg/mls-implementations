@@ -15,6 +15,9 @@ import (
 	pb "github.com/mlswg/mls-implementations/interop/proto"
 )
 
+///
+/// Configuration
+///
 type ScriptAction string
 
 const (
@@ -53,12 +56,18 @@ func (step *ScriptStep) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type TestVectorConfig []string
+type Script []ScriptStep
+
 type RunConfig struct {
-	Clients     []string                `json:"clients"`
-	TestVectors []string                `json:"test_vectors,omitempty"`
-	Scripts     map[string][]ScriptStep `json:"scripts"`
+	Clients     []string          `json:"clients"`
+	TestVectors TestVectorConfig  `json:"test_vectors,omitempty"`
+	Scripts     map[string]Script `json:"scripts",omitempty`
 }
 
+///
+/// Results
+///
 type TestVectorResult struct {
 	Generator   string `json:"generator"`
 	Verifier    string `json:"verifier"`
@@ -66,16 +75,20 @@ type TestVectorResult struct {
 	Error       string `json:"error,omitempty"`
 }
 
+type TestVectorResults map[string][]TestVectorResult
+
 type TestResults struct {
 	TestVectors map[string][]TestVectorResult `json:"test_vectors"`
 }
 
+///
+/// Clients
+///
 type Client struct {
 	conn      *grpc.ClientConn
 	rpc       pb.MLSClientClient
 	name      string
 	supported map[uint32]bool
-	compat    map[uint32]bool
 }
 
 func ctx() context.Context {
@@ -116,21 +129,109 @@ func NewClient(addr string) (*Client, error) {
 	for _, suite := range scr.GetCiphersuites() {
 		c.supported[suite] = true
 	}
-	c.compat = map[uint32]bool{}
 
 	return c, nil
 }
 
-func (c *Client) AddCompat(other *Client) {
-	for suite := range other.supported {
-		if !c.supported[suite] {
-			continue
-		}
+type ClientPool struct {
+	clients []*Client
+}
 
-		c.compat[suite] = true
+func NewClientPool(configs []string) (*ClientPool, error) {
+	p := &ClientPool{clients: make([]*Client, len(configs))}
+
+	var err error
+	for i, addr := range configs {
+		p.clients[i], err = NewClient(addr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return p, nil
+}
+
+func (p *ClientPool) Close() {
+	for _, c := range p.clients {
+		c.conn.Close()
 	}
 }
 
+func (p *ClientPool) RunTestVectors(config TestVectorConfig) TestVectorResults {
+	results := TestVectorResults{}
+	for _, typeString := range config {
+		typeVal, ok := testVectorType[typeString]
+		if !ok {
+			log.Fatalf("Invalid test vector type [%s]", typeString)
+		}
+
+		tvResults := []TestVectorResult{}
+		for _, generator := range p.clients {
+			// Generate test vectors for all ciphersuites (if required)
+			generatedVectors := map[uint32][]byte{0: []byte{}}
+			if cipherSuiteDependent[typeVal] {
+				delete(generatedVectors, 0)
+				for suite := range generator.supported {
+					generatedVectors[suite] = []byte{}
+				}
+			}
+
+			for suite := range generatedVectors {
+				genReq := &pb.GenerateTestVectorRequest{
+					TestVectorType: typeVal,
+					CipherSuite:    suite,
+					NLeaves:        testVectorParams.NLeaves,
+					NGenerations:   testVectorParams.NGenerations,
+					NEpochs:        testVectorParams.NEpochs,
+				}
+				genResp, err := generator.rpc.GenerateTestVector(ctx(), genReq)
+				if err != nil {
+					log.Printf("Error generating test vector [%s] [%s] [%v]", typeString, generator.name, err)
+					continue
+				}
+
+				generatedVectors[suite] = genResp.TestVector
+			}
+
+			// Verify test vectors for each supported ciphersuite with other clients
+			for _, verifier := range p.clients {
+				for suite, testVector := range generatedVectors {
+					if suite != 0 && !verifier.supported[suite] {
+						continue
+					}
+
+					if len(testVector) == 0 {
+						// This indicates that there was an error generating the vector
+						continue
+					}
+
+					verReq := &pb.VerifyTestVectorRequest{TestVectorType: typeVal, TestVector: testVector}
+					_, err := verifier.rpc.VerifyTestVector(ctx(), verReq)
+
+					errStr := ""
+					if err != nil {
+						errStr = err.Error()
+					}
+
+					tvResults = append(tvResults, TestVectorResult{
+						Generator:   generator.name,
+						CipherSuite: suite,
+						Verifier:    verifier.name,
+						Error:       errStr,
+					})
+				}
+			}
+		}
+
+		results[typeString] = tvResults
+	}
+
+	return results
+}
+
+///
+/// Main logic
+///
 var (
 	configOpt string
 )
@@ -183,97 +284,13 @@ func main() {
 	chk("Failure to parse config file", err)
 
 	// Connect to clients
-	clients := make([]*Client, len(config.Clients))
-	for i, addr := range config.Clients {
-		clients[i], err = NewClient(addr)
-		chk(fmt.Sprintf("Failure to connect to client [%s]", addr), err)
-		defer clients[i].conn.Close()
+	clientPool, err := NewClientPool(config.Clients)
+	chk("Failure to conenct to clients", err)
+	defer clientPool.Close()
 
-		log.Printf("Connected to [%s] @ [%s]", clients[i].name, addr)
-	}
-
-	// Build a ciphersuite compatibility matrix.  Each client's `compat` set
-	// contains the ciphersuites that it shares with *any* other client under
-	// test.  This tells us what cases that client needs to generate in order to
-	// test all cases with other clients.
-	for _, client := range clients {
-		for _, other := range clients {
-			client.AddCompat(other)
-		}
-	}
-
-	// Run each requested test vector across each pair of clients
-	// NB(RLB): You could reorder these operations a bunch of different ways.  Do
-	// all the generations before the verifications, do everything in parallel,
-	// etc.
+	// Run test vectors
 	results := TestResults{}
-	results.TestVectors = map[string][]TestVectorResult{}
-	for _, typeString := range config.TestVectors {
-		typeVal, ok := testVectorType[typeString]
-		if !ok {
-			log.Fatalf("Invalid test vector type [%s]", typeString)
-		}
-
-		tvResults := []TestVectorResult{}
-		for _, generator := range clients {
-			// Generate test vectors for all ciphersuites (if required)
-			generatedVectors := map[uint32][]byte{0: []byte{}}
-			if cipherSuiteDependent[typeVal] {
-				delete(generatedVectors, 0)
-				for suite := range generator.compat {
-					generatedVectors[suite] = []byte{}
-				}
-			}
-
-			for suite := range generatedVectors {
-				genReq := &pb.GenerateTestVectorRequest{
-					TestVectorType: typeVal,
-					CipherSuite:    suite,
-					NLeaves:        testVectorParams.NLeaves,
-					NGenerations:   testVectorParams.NGenerations,
-					NEpochs:        testVectorParams.NEpochs,
-				}
-				genResp, err := generator.rpc.GenerateTestVector(ctx(), genReq)
-				if err != nil {
-					log.Printf("Error generating test vector [%s] [%s] [%v]", typeString, generator.name, err)
-					continue
-				}
-
-				generatedVectors[suite] = genResp.TestVector
-			}
-
-			// Verify test vectors for each supported ciphersuite with other clients
-			for _, verifier := range clients {
-				for suite, testVector := range generatedVectors {
-					if suite != 0 && !verifier.supported[suite] {
-						continue
-					}
-
-					if len(testVector) == 0 {
-						// This indicates that there was an error generating the vector
-						continue
-					}
-
-					verReq := &pb.VerifyTestVectorRequest{TestVectorType: typeVal, TestVector: testVector}
-					_, err := verifier.rpc.VerifyTestVector(ctx(), verReq)
-
-					errStr := ""
-					if err != nil {
-						errStr = err.Error()
-					}
-
-					tvResults = append(tvResults, TestVectorResult{
-						Generator:   generator.name,
-						CipherSuite: suite,
-						Verifier:    verifier.name,
-						Error:       errStr,
-					})
-				}
-			}
-		}
-
-		results.TestVectors[typeString] = tvResults
-	}
+	results.TestVectors = clientPool.RunTestVectors(config.TestVectors)
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")
 	chk("Error marshaling results", err)
