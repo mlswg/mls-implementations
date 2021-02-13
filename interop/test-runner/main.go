@@ -15,9 +15,48 @@ import (
 	pb "github.com/mlswg/mls-implementations/interop/proto"
 )
 
+type ScriptAction string
+
+const (
+	ActionCreateGroup      ScriptAction = "create_group"
+	ActionCreateKeyPackage ScriptAction = "create_key_package"
+	ActionAddProposal      ScriptAction = "add_proposal"
+	ActionCommit           ScriptAction = "commit"
+	ActionHandleCommit     ScriptAction = "handle_commit"
+	ActionVerifyStateAuth  ScriptAction = "verify_state_auth"
+
+	AllActors = "*"
+)
+
+type ScriptStep struct {
+	Actor  string                 `json:"actor"`
+	Action ScriptAction           `json:"action"`
+	Params map[string]interface{} `json:"params"`
+}
+
+func (step *ScriptStep) UnmarshalJSON(data []byte) error {
+	err := json.Unmarshal(data, &step.Params)
+	if err != nil {
+		return err
+	}
+
+	actor, okActor := step.Params["actor"]
+	action, okAction := step.Params["action"]
+	if !okActor || !okAction {
+		return fmt.Errorf("Incomplete step %v %v", okActor, okAction)
+	}
+
+	step.Actor = actor.(string)
+	step.Action = action.(ScriptAction)
+	delete(step.Params, "actor")
+	delete(step.Params, "action")
+	return nil
+}
+
 type RunConfig struct {
-	Clients     []string `json:"clients"`
-	TestVectors []string `json:"test_vectors,omitempty"`
+	Clients     []string                `json:"clients"`
+	TestVectors []string                `json:"test_vectors,omitempty"`
+	Scripts     map[string][]ScriptStep `json:"scripts"`
 }
 
 type TestVectorResult struct {

@@ -11,5 +11,16 @@
     "transcript",
     "treekem",
     "messages"
-  ]
+  ],
+  "script": {
+    "two_person": [
+      {"actor": "alice", "action": "create_group"},
+      {"actor": "bob", "action": "create_key_package"},
+      {"actor": "alice", "action": "add_proposal", "key_package": 1},
+      {"actor": "alice", "action": "commit", "by_reference": [2]},
+      {"actor": "bob", "action": "join", "welcome": 3},
+      {"actor": "alice", "action": "handle_commit", "by_reference": [2], "commit": 3},
+      {"actor": "*", "action": "verify_state_auth"}
+    ]
+  }
 }
