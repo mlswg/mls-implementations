@@ -240,6 +240,7 @@ message CommitRequest {
 message CommitResponse {
   repeated bytes proposal = 1;
   bytes commit = 2;
+  bytes welcome = 3;
 }
 
 // rpc HandleCommit
