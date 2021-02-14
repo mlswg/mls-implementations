@@ -12,7 +12,7 @@
     "treekem",
     "messages"
   ],
-  "script": {
+  "scripts": {
     "two_person": [
       {"actor": "alice", "action": "create_group"},
       {"actor": "bob", "action": "create_key_package"},

@@ -131,13 +131,28 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: tonic::Request<CreateKeyPackageRequest>,
     ) -> Result<tonic::Response<CreateKeyPackageResponse>, tonic::Status> {
-        Ok(Response::new(CreateKeyPackageResponse::default())) // TODO
+        let resp = CreateKeyPackageResponse{ 
+            transaction_id: 0,
+            key_package: String::from("keyPackage").into_bytes(),
+        };
+
+        Ok(Response::new(resp)) // TODO
     }
 
     async fn join_group(
         &self,
-        _request: tonic::Request<JoinGroupRequest>,
+        request: tonic::Request<JoinGroupRequest>,
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
+        let obj = request.get_ref();
+        let welcome = String::from("welcome");
+        let welcome_in = String::from_utf8(obj.welcome.clone()).unwrap();
+        if (welcome != welcome_in) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "Invalid welcome",
+            ));
+        }
+
         Ok(Response::new(JoinGroupResponse::default())) // TODO
     }
 
@@ -159,7 +174,11 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: tonic::Request<StateAuthRequest>,
     ) -> Result<tonic::Response<StateAuthResponse>, tonic::Status> {
-        Ok(Response::new(StateAuthResponse::default())) // TODO
+        let resp = StateAuthResponse{ 
+            state_auth_secret: String::from("stateAuthSecret").into_bytes(),
+        };
+
+        Ok(Response::new(resp)) // TODO
     }
 
     async fn export(
@@ -192,9 +211,23 @@ impl MlsClient for MlsClientImpl {
 
     async fn add_proposal(
         &self,
-        _request: tonic::Request<AddProposalRequest>,
+        request: tonic::Request<AddProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default())) // TODO
+        let obj = request.get_ref();
+        let key_package = String::from("keyPackage");
+        let key_package_in = String::from_utf8(obj.key_package.clone()).unwrap();
+        if (key_package != key_package_in) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "Invalid key package",
+            ));
+        }
+
+        let resp = ProposalResponse{ 
+            proposal: String::from("addProposal").into_bytes(),
+        };
+
+        Ok(Response::new(resp)) // TODO
     }
 
     async fn update_proposal(
@@ -236,13 +269,28 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: tonic::Request<CommitRequest>,
     ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
-        Ok(Response::new(CommitResponse::default())) // TODO
+        let resp = CommitResponse{ 
+            commit: String::from("commit").into_bytes(),
+            welcome: String::from("welcome").into_bytes(),
+        };
+
+        Ok(Response::new(resp)) // TODO
     }
 
     async fn handle_commit(
         &self,
-        _request: tonic::Request<HandleCommitRequest>,
+        request: tonic::Request<HandleCommitRequest>,
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
+        let obj = request.get_ref();
+        let commit = String::from("commit");
+        let commit_in = String::from_utf8(obj.commit.clone()).unwrap();
+        if (commit != commit_in) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "Invalid commit",
+            ));
+        }
+
         Ok(Response::new(HandleCommitResponse::default())) // TODO
     }
 }

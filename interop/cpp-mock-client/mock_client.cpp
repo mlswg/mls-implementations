@@ -151,15 +151,20 @@ class MLSClientImpl final : public MLSClient::Service
 
   Status CreateKeyPackage(ServerContext* /* context */,
                           const CreateKeyPackageRequest* /* request */,
-                          CreateKeyPackageResponse* /* response */) override
+                          CreateKeyPackageResponse* response) override
   {
+    response->set_key_package("keyPackage");
     return Status::OK; // TODO
   }
 
   Status JoinGroup(ServerContext* /* context */,
-                   const JoinGroupRequest* /* request */,
+                   const JoinGroupRequest* request,
                    JoinGroupResponse* /* response */) override
   {
+    if (request->welcome() != "welcome") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid welcome");
+    }
+
     return Status::OK; // TODO
   }
 
@@ -180,8 +185,9 @@ class MLSClientImpl final : public MLSClient::Service
 
   Status StateAuth(ServerContext* /* context */,
                    const StateAuthRequest* /* request */,
-                   StateAuthResponse* /* response */) override
+                   StateAuthResponse* response) override
   {
+    response->set_state_auth_secret("stateAuthSecret");
     return Status::OK; // TODO
   }
 
@@ -214,9 +220,14 @@ class MLSClientImpl final : public MLSClient::Service
   }
 
   Status AddProposal(ServerContext* /* context */,
-                     const AddProposalRequest* /* request */,
-                     ProposalResponse* /* response */) override
+                     const AddProposalRequest* request,
+                     ProposalResponse* response) override
   {
+    if (request->key_package() != "keyPackage") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid commit");
+    }
+
+    response->set_proposal("addProposal");
     return Status::OK; // TODO
   }
 
@@ -257,15 +268,21 @@ class MLSClientImpl final : public MLSClient::Service
 
   Status Commit(ServerContext* /* context */,
                 const CommitRequest* /* request */,
-                CommitResponse* /* response */) override
+                CommitResponse* response) override
   {
+    response->set_commit("commit");
+    response->set_welcome("welcome");
     return Status::OK; // TODO
   }
 
   Status HandleCommit(ServerContext* /* context */,
-                      const HandleCommitRequest* /* request */,
+                      const HandleCommitRequest* request,
                       HandleCommitResponse* /* response */) override
   {
+    if (request->commit() != "commit") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid commit");
+    }
+
     return Status::OK; // TODO
   }
 };

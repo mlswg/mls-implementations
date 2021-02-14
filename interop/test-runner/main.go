@@ -52,27 +52,47 @@ const (
 )
 
 type ScriptStep struct {
-	Actor  string                 `json:"actor"`
-	Action ScriptAction           `json:"action"`
-	Params map[string]interface{} `json:"params"`
+	Actor  string       `json:"actor"`
+	Action ScriptAction `json:"action"`
+	Raw    []byte       `json:"raw"`
+}
+
+type JoinGroupStepParams struct {
+	Welcome int `json:"welcome"`
+}
+
+type AddProposalStepParams struct {
+	KeyPackage int `json:"keyPackage"`
+}
+
+type CommitStepParams struct {
+	ByReference []int `json:"byReference"`
+	ByValue     []int `json:"byValue"`
+}
+
+type HandleCommitStepParams struct {
+	Commit      int   `json:"commit"`
+	ByReference []int `json:"byReference"`
 }
 
 func (step *ScriptStep) UnmarshalJSON(data []byte) error {
-	err := json.Unmarshal(data, &step.Params)
+	var parsed map[string]interface{}
+	err := json.Unmarshal(data, &parsed)
 	if err != nil {
 		return err
 	}
 
-	actor, okActor := step.Params["actor"]
-	action, okAction := step.Params["action"]
+	actor, okActor := parsed["actor"]
+	action, okAction := parsed["action"]
 	if !okActor || !okAction {
 		return fmt.Errorf("Incomplete step %v %v", okActor, okAction)
 	}
 
 	step.Actor = actor.(string)
-	step.Action = action.(ScriptAction)
-	delete(step.Params, "actor")
-	delete(step.Params, "action")
+	step.Action = ScriptAction(action.(string))
+	step.Raw = make([]byte, len(data))
+	copy(step.Raw, data)
+
 	return nil
 }
 
@@ -322,7 +342,7 @@ type ScriptActorConfig struct {
 func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
 	configSize := 2 * len(p.suiteSupport) * len(p.clients)
 
-	configs := make([]ScriptActorConfig, configSize)
+	configs := make([]ScriptActorConfig, 0, configSize)
 	for suite, clients := range p.suiteSupport {
 		for _, combo := range combinations(len(clients), len(actors)) {
 			for _, encrypt := range []bool{true, false} {
@@ -366,15 +386,15 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 			result.Actors[actors[i]] = config.ActorClients[actors[i]].name
 		}
 
+		stateID := map[string]uint32{}
+		transactionID := map[string]uint32{}
+
 	Step:
 		for i, step := range script {
 			var client *Client
 			if step.Actor != AllActors {
 				client = config.ActorClients[step.Actor]
 			}
-
-			stateID := map[string]uint32{}
-			transactionID := map[string]uint32{}
 
 			switch step.Action {
 			case ActionCreateGroup:
@@ -385,7 +405,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				}
 				resp, err := client.rpc.CreateGroup(ctx(), req)
 				if err != nil {
-					result.Error = err
+					result.Error = err.Error()
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -399,7 +419,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				}
 				resp, err := client.rpc.CreateKeyPackage(ctx(), req)
 				if err != nil {
-					result.Error = err
+					result.Error = err.Error()
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -409,10 +429,18 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				result.Transcript[i]["keyPackage"] = mustHex(resp.KeyPackage)
 
 			case ActionJoinGroup:
-				welcomeIndex := int(step.Params["welcome"].(float64))
-				welcome, ok := result.Transcript[welcomeIndex]["welcome"]
+				var params JoinGroupStepParams
+				err := json.Unmarshal(step.Raw, &params)
+				if err != nil {
+					result.Error = fmt.Sprintf("Error parsing params: %v", err)
+					result.FailedStep = new(int)
+					*result.FailedStep = i
+					break Step
+				}
+
+				welcome, ok := result.Transcript[params.Welcome]["welcome"]
 				if !ok {
-					result.Error = fmt.Sprintf("Malformed step: No welcome at step %d", welcomeIndex)
+					result.Error = fmt.Sprintf("Malformed step: No welcome at step %d", params.Welcome)
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -433,7 +461,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				}
 				resp, err := client.rpc.JoinGroup(ctx(), req)
 				if err != nil {
-					result.Error = err
+					result.Error = err.Error()
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -442,10 +470,18 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				stateID[step.Actor] = resp.StateId
 
 			case ActionAddProposal:
-				keyPackageIndex := int(step.Params["keyPackage"].(float64))
-				keyPackage, ok := result.Transcript[keyPackageIndex]["keyPackage"]
+				var params AddProposalStepParams
+				err := json.Unmarshal(step.Raw, &params)
+				if err != nil {
+					result.Error = fmt.Sprintf("Error parsing params: %v", err)
+					result.FailedStep = new(int)
+					*result.FailedStep = i
+					break Step
+				}
+
+				keyPackage, ok := result.Transcript[params.KeyPackage]["keyPackage"]
 				if !ok {
-					result.Error = fmt.Sprintf("Malformed step: No key package at step %d", keyPackageIndex)
+					result.Error = fmt.Sprintf("Malformed step: No key package at step %d", params.KeyPackage)
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -457,7 +493,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				}
 				resp, err := client.rpc.AddProposal(ctx(), req)
 				if err != nil {
-					result.Error = err
+					result.Error = err.Error()
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -466,9 +502,17 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				result.Transcript[i]["proposal"] = mustHex(resp.Proposal)
 
 			case ActionCommit:
-				byRefIx := step.Params["byReference"].([]float64)
-				byRef := make([][]byte, len(byRefIx))
-				for i, ix64 := range byRefIx {
+				var params CommitStepParams
+				err := json.Unmarshal(step.Raw, &params)
+				if err != nil {
+					result.Error = fmt.Sprintf("Error parsing params: %v", err)
+					result.FailedStep = new(int)
+					*result.FailedStep = i
+					break Step
+				}
+
+				byRef := make([][]byte, len(params.ByReference))
+				for i, ix64 := range params.ByReference {
 					ix := int(ix64)
 					proposal, ok := result.Transcript[ix]["proposal"]
 					if !ok {
@@ -481,9 +525,8 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 					byRef[i] = mustUnhex(proposal)
 				}
 
-				byValIx := step.Params["byValerence"].([]float64)
-				byVal := make([][]byte, len(byValIx))
-				for i, ix64 := range byValIx {
+				byVal := make([][]byte, len(params.ByValue))
+				for i, ix64 := range params.ByValue {
 					ix := int(ix64)
 					proposal, ok := result.Transcript[ix]["proposal"]
 					if !ok {
@@ -503,7 +546,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				}
 				resp, err := client.rpc.Commit(ctx(), req)
 				if err != nil {
-					result.Error = err
+					result.Error = err.Error()
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -513,18 +556,25 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				result.Transcript[i]["welcome"] = mustHex(resp.Welcome)
 
 			case ActionHandleCommit:
-				commitIndex := int(step.Params["commit"].(float64))
-				commit, ok := result.Transcript[commitIndex]["commit"]
-				if !ok {
-					result.Error = fmt.Sprintf("Malformed step: No commit at step %d", commitIndex)
+				var params HandleCommitStepParams
+				err := json.Unmarshal(step.Raw, &params)
+				if err != nil {
+					result.Error = fmt.Sprintf("Error parsing params: %v", err)
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
 				}
 
-				byRefIx := step.Params["byReference"].([]float64)
-				byRef := make([][]byte, len(byRefIx))
-				for i, ix64 := range byRefIx {
+				commit, ok := result.Transcript[params.Commit]["commit"]
+				if !ok {
+					result.Error = fmt.Sprintf("Malformed step: No commit at step %d", params.Commit)
+					result.FailedStep = new(int)
+					*result.FailedStep = i
+					break Step
+				}
+
+				byRef := make([][]byte, len(params.ByReference))
+				for i, ix64 := range params.ByReference {
 					ix := int(ix64)
 					proposal, ok := result.Transcript[ix]["proposal"]
 					if !ok {
@@ -544,7 +594,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 				}
 				resp, err := client.rpc.HandleCommit(ctx(), req)
 				if err != nil {
-					result.Error = err
+					result.Error = err.Error()
 					result.FailedStep = new(int)
 					*result.FailedStep = i
 					break Step
@@ -566,7 +616,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 					req := &pb.StateAuthRequest{StateId: stateID[actor]}
 					resp, err := client.rpc.StateAuth(ctx(), req)
 					if err != nil {
-						result.Error = err
+						result.Error = err.Error()
 						result.FailedStep = new(int)
 						*result.FailedStep = i
 						break Step
@@ -660,6 +710,10 @@ func main() {
 	// Run test vectors
 	results := TestResults{}
 	results.TestVectors = clientPool.RunTestVectors(config.TestVectors)
+	results.Scripts = map[string]ScriptResults{}
+	for name, script := range config.Scripts {
+		results.Scripts[name] = clientPool.RunScript(script)
+	}
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")
 	chk("Error marshaling results", err)
