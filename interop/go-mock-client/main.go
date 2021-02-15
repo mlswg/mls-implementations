@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 
 	"google.golang.org/grpc"
@@ -21,11 +22,26 @@ var (
 	testVector            = []byte{0, 1, 2, 3}
 )
 
+func newID(universe map[uint32]bool) uint32 {
+	id := rand.Uint32()
+	universe[id] = true
+	return id
+}
+
 ///
 /// Mock client implementation
 ///
 type MockClient struct {
 	pb.MLSClientServer
+	transactions map[uint32]bool
+	states       map[uint32]bool
+}
+
+func NewMockClient() *MockClient {
+	return &MockClient{
+		transactions: map[uint32]bool{},
+		states:       map[uint32]bool{},
+	}
 }
 
 func (mc *MockClient) Name(ctx context.Context, req *pb.NameRequest) (*pb.NameResponse, error) {
@@ -102,24 +118,35 @@ func (mc *MockClient) VerifyTestVector(ctx context.Context, req *pb.VerifyTestVe
 
 // Ways to become a member of a group
 func (mc *MockClient) CreateGroup(ctx context.Context, in *pb.CreateGroupRequest) (*pb.CreateGroupResponse, error) {
-	resp := &pb.CreateGroupResponse{}
+	resp := &pb.CreateGroupResponse{
+		StateId: newID(mc.states),
+	}
+
 	return resp, nil // TODO
 }
 
 func (mc *MockClient) CreateKeyPackage(ctx context.Context, in *pb.CreateKeyPackageRequest) (*pb.CreateKeyPackageResponse, error) {
 	resp := &pb.CreateKeyPackageResponse{
-		KeyPackage: []byte("keyPackage"),
+		TransactionId: newID(mc.transactions),
+		KeyPackage:    []byte("keyPackage"),
 	}
 
 	return resp, nil // TODO
 }
 
 func (mc *MockClient) JoinGroup(ctx context.Context, in *pb.JoinGroupRequest) (*pb.JoinGroupResponse, error) {
+	if !mc.transactions[in.TransactionId] {
+		return nil, status.Error(codes.InvalidArgument, "Invalid transaction")
+	}
+
 	if string(in.Welcome) != "welcome" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid welcome")
 	}
 
-	resp := &pb.JoinGroupResponse{}
+	resp := &pb.JoinGroupResponse{
+		StateId: newID(mc.states),
+	}
+
 	return resp, nil // TODO
 }
 
@@ -135,6 +162,11 @@ func (mc *MockClient) PublicGroupState(ctx context.Context, in *pb.PublicGroupSt
 }
 
 func (mc *MockClient) StateAuth(ctx context.Context, in *pb.StateAuthRequest) (*pb.StateAuthResponse, error) {
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (auth): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
 	resp := &pb.StateAuthResponse{
 		StateAuthSecret: []byte("stateAuthSecret"),
 	}
@@ -163,6 +195,11 @@ func (mc *MockClient) StorePSK(ctx context.Context, in *pb.StorePSKRequest) (*pb
 }
 
 func (mc *MockClient) AddProposal(ctx context.Context, in *pb.AddProposalRequest) (*pb.ProposalResponse, error) {
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (add): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
 	if string(in.KeyPackage) != "keyPackage" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid key package")
 	}
@@ -200,6 +237,11 @@ func (mc *MockClient) AppAckProposal(ctx context.Context, in *pb.AppAckProposalR
 }
 
 func (mc *MockClient) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.CommitResponse, error) {
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (commit): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
 	resp := &pb.CommitResponse{
 		Commit:  []byte("commit"),
 		Welcome: []byte("welcome"),
@@ -209,11 +251,20 @@ func (mc *MockClient) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.Com
 }
 
 func (mc *MockClient) HandleCommit(ctx context.Context, in *pb.HandleCommitRequest) (*pb.HandleCommitResponse, error) {
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (handle): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
 	if string(in.Commit) != "commit" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid commit")
 	}
 
-	resp := &pb.HandleCommitResponse{}
+	resp := &pb.HandleCommitResponse{
+		StateId: newID(mc.states),
+	}
+
+	mc.states[resp.StateId] = true
 	return resp, nil // TODO
 }
 
@@ -240,7 +291,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterMLSClientServer(s, &MockClient{})
+	pb.RegisterMLSClientServer(s, NewMockClient())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
