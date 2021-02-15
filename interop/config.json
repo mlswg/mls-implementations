@@ -1,8 +1,6 @@
 {
   "clients": [
-    "localhost:50001",
-    "localhost:50002",
-    "localhost:50003"
+    "localhost:50001"
   ],
   "test_vectors": [
     "tree_math",
@@ -13,13 +11,20 @@
     "messages"
   ],
   "scripts": {
-    "two_person": [
+    "two_party": [
       {"action": "createGroup", "actor": "alice"},
       {"action": "createKeyPackage", "actor": "bob"},
       {"action": "addProposal", "actor": "alice", "keyPackage": 1},
       {"action": "commit", "actor": "alice", "byReference": [2]},
       {"action": "joinGroup", "actor": "bob", "welcome": 3},
       {"action": "handleCommit", "actor": "alice", "byReference": [2], "commit": 3},
+      {"action": "verifyStateAuth"}
+    ],
+    "external_join": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "publicGroupState", "actor": "alice"},
+      {"action": "externalJoin", "actor": "bob"},
+      {"action": "handleCommit", "actor": "alice", "commit": 2},
       {"action": "verifyStateAuth"}
     ]
   }

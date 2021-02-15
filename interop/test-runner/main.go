@@ -25,6 +25,8 @@ const (
 	ActionCreateGroup      ScriptAction = "createGroup"
 	ActionCreateKeyPackage ScriptAction = "createKeyPackage"
 	ActionJoinGroup        ScriptAction = "joinGroup"
+	ActionExternalJoin     ScriptAction = "externalJoin"
+	ActionPublicGroupState ScriptAction = "publicGroupState"
 	ActionAddProposal      ScriptAction = "addProposal"
 	ActionCommit           ScriptAction = "commit"
 	ActionHandleCommit     ScriptAction = "handleCommit"
@@ -39,6 +41,10 @@ type ScriptStep struct {
 
 type JoinGroupStepParams struct {
 	Welcome int `json:"welcome"`
+}
+
+type ExternalJoinStepParams struct {
+	PublicGroupState int `json:"publicGroupState"`
 }
 
 type AddProposalStepParams struct {
@@ -401,6 +407,44 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		config.stateID[step.Actor] = resp.StateId
+
+	case ActionExternalJoin:
+		client := config.ActorClients[step.Actor]
+		var params ExternalJoinStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		pgs, err := config.GetMessage(params.PublicGroupState, "publicGroupState")
+		if err != nil {
+			return err
+		}
+
+		req := &pb.ExternalJoinRequest{
+			PublicGroupState: pgs,
+			EncryptHandshake: config.EncryptHandshake,
+		}
+		resp, err := client.rpc.ExternalJoin(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.stateID[step.Actor] = resp.StateId
+		config.StoreMessage(index, "commit", resp.Commit)
+
+	case ActionPublicGroupState:
+		client := config.ActorClients[step.Actor]
+
+		req := &pb.PublicGroupStateRequest{
+			StateId: config.stateID[step.Actor],
+		}
+		resp, err := client.rpc.PublicGroupState(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "publicGroupState", resp.PublicGroupState)
 
 	case ActionAddProposal:
 		client := config.ActorClients[step.Actor]
