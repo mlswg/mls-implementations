@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -18,37 +17,18 @@ import (
 )
 
 ///
-/// Utilities
-///
-
-func mustHex(b []byte) string {
-	return hex.EncodeToString(b)
-}
-
-func mustUnhex(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-
-	return b
-}
-
-///
 /// Configuration
 ///
 type ScriptAction string
 
 const (
-	ActionCreateGroup      ScriptAction = "create_group"
-	ActionCreateKeyPackage ScriptAction = "create_key_package"
-	ActionJoinGroup        ScriptAction = "join_group"
-	ActionAddProposal      ScriptAction = "add_proposal"
+	ActionCreateGroup      ScriptAction = "createGroup"
+	ActionCreateKeyPackage ScriptAction = "createKeyPackage"
+	ActionJoinGroup        ScriptAction = "joinGroup"
+	ActionAddProposal      ScriptAction = "addProposal"
 	ActionCommit           ScriptAction = "commit"
-	ActionHandleCommit     ScriptAction = "handle_commit"
-	ActionVerifyStateAuth  ScriptAction = "verify_state_auth"
-
-	AllActors = "*"
+	ActionHandleCommit     ScriptAction = "handleCommit"
+	ActionVerifyStateAuth  ScriptAction = "verifyStateAuth"
 )
 
 type ScriptStep struct {
@@ -82,14 +62,16 @@ func (step *ScriptStep) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	actor, okActor := parsed["actor"]
-	action, okAction := parsed["action"]
-	if !okActor || !okAction {
-		return fmt.Errorf("Incomplete step %v %v", okActor, okAction)
+	if action, ok := parsed["action"]; ok {
+		step.Action = ScriptAction(action.(string))
+	} else {
+		return fmt.Errorf("Incomplete step: Missing action")
 	}
 
-	step.Actor = actor.(string)
-	step.Action = ScriptAction(action.(string))
+	if actor, ok := parsed["actor"]; ok {
+		step.Actor = actor.(string)
+	}
+
 	step.Raw = make([]byte, len(data))
 	copy(step.Raw, data)
 
@@ -103,7 +85,7 @@ type Script []ScriptStep
 func (s Script) Actors() []string {
 	actorMap := map[string]bool{}
 	for _, step := range s {
-		if step.Actor == AllActors {
+		if len(step.Actor) == 0 {
 			continue
 		}
 
@@ -337,6 +319,245 @@ type ScriptActorConfig struct {
 	CipherSuite      uint32
 	EncryptHandshake bool
 	ActorClients     map[string]*Client
+
+	stateID       map[string]uint32
+	transactionID map[string]uint32
+	transcript    []map[string]string
+}
+
+func (config *ScriptActorConfig) StoreMessage(index int, key string, message []byte) {
+	config.transcript[index][key] = hex.EncodeToString(message)
+}
+
+func (config *ScriptActorConfig) GetMessage(index int, key string) ([]byte, error) {
+	messageHex, ok := config.transcript[index][key]
+	if !ok {
+		return nil, fmt.Errorf("No message for key %s at step %d", key, index)
+	}
+
+	message, err := hex.DecodeString(messageHex)
+	if err != nil {
+		return nil, err
+	}
+
+	return message, nil
+}
+
+func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
+	switch step.Action {
+	case ActionCreateGroup:
+		client := config.ActorClients[step.Actor]
+		req := &pb.CreateGroupRequest{
+			GroupId:          []byte("group"),
+			CipherSuite:      config.CipherSuite,
+			EncryptHandshake: config.EncryptHandshake,
+		}
+		resp, err := client.rpc.CreateGroup(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.stateID[step.Actor] = resp.StateId
+
+	case ActionCreateKeyPackage:
+		client := config.ActorClients[step.Actor]
+		req := &pb.CreateKeyPackageRequest{
+			CipherSuite: config.CipherSuite,
+		}
+		resp, err := client.rpc.CreateKeyPackage(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.transactionID[step.Actor] = resp.TransactionId
+		config.StoreMessage(index, "keyPackage", resp.KeyPackage)
+
+	case ActionJoinGroup:
+		client := config.ActorClients[step.Actor]
+		var params JoinGroupStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		welcome, err := config.GetMessage(params.Welcome, "welcome")
+		if err != nil {
+			return err
+		}
+
+		txID, ok := config.transactionID[step.Actor]
+		if !ok {
+			return fmt.Errorf("Malformed step: No transaction for %d", step.Actor)
+		}
+
+		req := &pb.JoinGroupRequest{
+			TransactionId:    txID,
+			Welcome:          welcome,
+			EncryptHandshake: config.EncryptHandshake,
+		}
+		resp, err := client.rpc.JoinGroup(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.stateID[step.Actor] = resp.StateId
+
+	case ActionAddProposal:
+		client := config.ActorClients[step.Actor]
+		var params AddProposalStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		keyPackage, err := config.GetMessage(params.KeyPackage, "keyPackage")
+		if err != nil {
+			return err
+		}
+
+		req := &pb.AddProposalRequest{
+			StateId:    config.stateID[step.Actor],
+			KeyPackage: keyPackage,
+		}
+		resp, err := client.rpc.AddProposal(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "proposal", resp.Proposal)
+
+	case ActionCommit:
+		client := config.ActorClients[step.Actor]
+		var params CommitStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		byRef := make([][]byte, len(params.ByReference))
+		for i, ix64 := range params.ByReference {
+			byRef[i], err = config.GetMessage(int(ix64), "proposal")
+			if err != nil {
+				return err
+			}
+		}
+
+		byVal := make([][]byte, len(params.ByValue))
+		for i, ix64 := range params.ByValue {
+			byVal[i], err = config.GetMessage(int(ix64), "proposal")
+			if err != nil {
+				return err
+			}
+		}
+
+		req := &pb.CommitRequest{
+			StateId:     config.stateID[step.Actor],
+			ByReference: byRef,
+			ByValue:     byVal,
+		}
+		resp, err := client.rpc.Commit(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "commit", resp.Commit)
+		config.StoreMessage(index, "welcome", resp.Welcome)
+
+	case ActionHandleCommit:
+		client := config.ActorClients[step.Actor]
+		var params HandleCommitStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		commit, err := config.GetMessage(params.Commit, "commit")
+		if err != nil {
+			return err
+		}
+
+		byRef := make([][]byte, len(params.ByReference))
+		for i, ix64 := range params.ByReference {
+			byRef[i], err = config.GetMessage(int(ix64), "proposal")
+			if err != nil {
+				return err
+			}
+		}
+
+		req := &pb.HandleCommitRequest{
+			StateId:  config.stateID[step.Actor],
+			Proposal: byRef,
+			Commit:   commit,
+		}
+		resp, err := client.rpc.HandleCommit(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.stateID[step.Actor] = resp.StateId
+
+	case ActionVerifyStateAuth:
+		authSet := map[string]bool{}
+		for actor, client := range config.ActorClients {
+			req := &pb.StateAuthRequest{StateId: config.stateID[actor]}
+			resp, err := client.rpc.StateAuth(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			auth := resp.StateAuthSecret
+			authSet[string(auth)] = true
+			config.StoreMessage(index, actor, auth)
+		}
+
+		if len(authSet) > 1 {
+			return fmt.Errorf("Members do not agree on state auth secret")
+		}
+
+	default:
+		return fmt.Errorf("Unknown action: %s", step.Action)
+	}
+
+	return nil
+}
+
+func (config *ScriptActorConfig) Run(script Script) ScriptResult {
+	config.stateID = map[string]uint32{}
+	config.transactionID = map[string]uint32{}
+	config.transcript = make([]map[string]string, len(script))
+
+	for i := range config.transcript {
+		config.transcript[i] = map[string]string{}
+	}
+
+	// Prepare a partial result to return if we need to abort
+	result := ScriptResult{
+		CipherSuite:      config.CipherSuite,
+		Actors:           map[string]string{},
+		EncryptHandshake: config.EncryptHandshake,
+
+		// Since this copies the map by reference, it will be updates as
+		// config.transcript is updated below
+		Transcript: config.transcript,
+	}
+
+	actors := script.Actors()
+	for i := range actors {
+		result.Actors[actors[i]] = config.ActorClients[actors[i]].name
+	}
+
+	// Run the steps to completion or error
+	for i, step := range script {
+		err := config.RunStep(i, step)
+		if err != nil {
+			result.Error = err.Error()
+			result.FailedStep = new(int)
+			*result.FailedStep = i
+			return result
+		}
+	}
+
+	return result
 }
 
 func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
@@ -370,278 +591,7 @@ func (p *ClientPool) RunScript(script Script) ScriptResults {
 	results := make(ScriptResults, 0, len(configs))
 
 	for _, config := range configs {
-		result := ScriptResult{
-			CipherSuite:      config.CipherSuite,
-			Actors:           map[string]string{},
-			EncryptHandshake: config.EncryptHandshake,
-
-			Transcript: make([]map[string]string, len(script)),
-		}
-
-		for i := range result.Transcript {
-			result.Transcript[i] = map[string]string{}
-		}
-
-		for i := range actors {
-			result.Actors[actors[i]] = config.ActorClients[actors[i]].name
-		}
-
-		stateID := map[string]uint32{}
-		transactionID := map[string]uint32{}
-
-	Step:
-		for i, step := range script {
-			var client *Client
-			if step.Actor != AllActors {
-				client = config.ActorClients[step.Actor]
-			}
-
-			switch step.Action {
-			case ActionCreateGroup:
-				req := &pb.CreateGroupRequest{
-					GroupId:          []byte("group"),
-					CipherSuite:      config.CipherSuite,
-					EncryptHandshake: config.EncryptHandshake,
-				}
-				resp, err := client.rpc.CreateGroup(ctx(), req)
-				if err != nil {
-					result.Error = err.Error()
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				stateID[step.Actor] = resp.StateId
-
-			case ActionCreateKeyPackage:
-				req := &pb.CreateKeyPackageRequest{
-					CipherSuite: config.CipherSuite,
-				}
-				resp, err := client.rpc.CreateKeyPackage(ctx(), req)
-				if err != nil {
-					result.Error = err.Error()
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				transactionID[step.Actor] = resp.TransactionId
-				result.Transcript[i]["keyPackage"] = mustHex(resp.KeyPackage)
-
-			case ActionJoinGroup:
-				var params JoinGroupStepParams
-				err := json.Unmarshal(step.Raw, &params)
-				if err != nil {
-					result.Error = fmt.Sprintf("Error parsing params: %v", err)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				welcome, ok := result.Transcript[params.Welcome]["welcome"]
-				if !ok {
-					result.Error = fmt.Sprintf("Malformed step: No welcome at step %d", params.Welcome)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				txID, ok := transactionID[step.Actor]
-				if !ok {
-					result.Error = fmt.Sprintf("Malformed step: No transaction for %d", step.Actor)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				req := &pb.JoinGroupRequest{
-					TransactionId:    txID,
-					Welcome:          mustUnhex(welcome),
-					EncryptHandshake: config.EncryptHandshake,
-				}
-				resp, err := client.rpc.JoinGroup(ctx(), req)
-				if err != nil {
-					result.Error = err.Error()
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				stateID[step.Actor] = resp.StateId
-
-			case ActionAddProposal:
-				var params AddProposalStepParams
-				err := json.Unmarshal(step.Raw, &params)
-				if err != nil {
-					result.Error = fmt.Sprintf("Error parsing params: %v", err)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				keyPackage, ok := result.Transcript[params.KeyPackage]["keyPackage"]
-				if !ok {
-					result.Error = fmt.Sprintf("Malformed step: No key package at step %d", params.KeyPackage)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				req := &pb.AddProposalRequest{
-					StateId:    stateID[step.Actor],
-					KeyPackage: mustUnhex(keyPackage),
-				}
-				resp, err := client.rpc.AddProposal(ctx(), req)
-				if err != nil {
-					result.Error = err.Error()
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				result.Transcript[i]["proposal"] = mustHex(resp.Proposal)
-
-			case ActionCommit:
-				var params CommitStepParams
-				err := json.Unmarshal(step.Raw, &params)
-				if err != nil {
-					result.Error = fmt.Sprintf("Error parsing params: %v", err)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				byRef := make([][]byte, len(params.ByReference))
-				for i, ix64 := range params.ByReference {
-					ix := int(ix64)
-					proposal, ok := result.Transcript[ix]["proposal"]
-					if !ok {
-						result.Error = fmt.Sprintf("Malformed step: No proposal at step %d", ix)
-						result.FailedStep = new(int)
-						*result.FailedStep = i
-						break Step
-					}
-
-					byRef[i] = mustUnhex(proposal)
-				}
-
-				byVal := make([][]byte, len(params.ByValue))
-				for i, ix64 := range params.ByValue {
-					ix := int(ix64)
-					proposal, ok := result.Transcript[ix]["proposal"]
-					if !ok {
-						result.Error = fmt.Sprintf("Malformed step: No proposal at step %d", ix)
-						result.FailedStep = new(int)
-						*result.FailedStep = i
-						break Step
-					}
-
-					byVal[i] = mustUnhex(proposal)
-				}
-
-				req := &pb.CommitRequest{
-					StateId:     stateID[step.Actor],
-					ByReference: byRef,
-					ByValue:     byVal,
-				}
-				resp, err := client.rpc.Commit(ctx(), req)
-				if err != nil {
-					result.Error = err.Error()
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				result.Transcript[i]["commit"] = mustHex(resp.Commit)
-				result.Transcript[i]["welcome"] = mustHex(resp.Welcome)
-
-			case ActionHandleCommit:
-				var params HandleCommitStepParams
-				err := json.Unmarshal(step.Raw, &params)
-				if err != nil {
-					result.Error = fmt.Sprintf("Error parsing params: %v", err)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				commit, ok := result.Transcript[params.Commit]["commit"]
-				if !ok {
-					result.Error = fmt.Sprintf("Malformed step: No commit at step %d", params.Commit)
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				byRef := make([][]byte, len(params.ByReference))
-				for i, ix64 := range params.ByReference {
-					ix := int(ix64)
-					proposal, ok := result.Transcript[ix]["proposal"]
-					if !ok {
-						result.Error = fmt.Sprintf("Malformed step: No proposal at step %d", ix)
-						result.FailedStep = new(int)
-						*result.FailedStep = i
-						break Step
-					}
-
-					byRef[i] = mustUnhex(proposal)
-				}
-
-				req := &pb.HandleCommitRequest{
-					StateId:  stateID[step.Actor],
-					Proposal: byRef,
-					Commit:   mustUnhex(commit),
-				}
-				resp, err := client.rpc.HandleCommit(ctx(), req)
-				if err != nil {
-					result.Error = err.Error()
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				stateID[step.Actor] = resp.StateId
-
-			case ActionVerifyStateAuth:
-				if step.Actor != AllActors {
-					result.Error = fmt.Sprintf("Malformed step: Actor specified for verifyStateAuth")
-					result.FailedStep = new(int)
-					*result.FailedStep = i
-					break Step
-				}
-
-				lastActor := ""
-				lastAuth := []byte(nil)
-				for actor, client := range config.ActorClients {
-					req := &pb.StateAuthRequest{StateId: stateID[actor]}
-					resp, err := client.rpc.StateAuth(ctx(), req)
-					if err != nil {
-						result.Error = err.Error()
-						result.FailedStep = new(int)
-						*result.FailedStep = i
-						break Step
-					}
-
-					auth := resp.StateAuthSecret
-					if lastAuth != nil && !bytes.Equal(lastAuth, resp.StateAuthSecret) {
-						result.Error = fmt.Sprintf("State auth mismatch [%s]=[%x] [%s]=[%x]", lastActor, lastAuth, actor, auth)
-						result.FailedStep = new(int)
-						*result.FailedStep = i
-						break Step
-					}
-
-					lastActor = actor
-					lastAuth = auth
-				}
-
-			default:
-				result.Error = fmt.Sprintf("Unknown action: %s", step.Action)
-				result.FailedStep = new(int)
-				*result.FailedStep = i
-				break Step
-			}
-		}
-
+		result := config.Run(script)
 		results = append(results, result)
 	}
 
