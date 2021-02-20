@@ -186,17 +186,24 @@ class MLSClientImpl final : public MLSClient::Service
   }
 
   Status ExternalJoin(ServerContext* /* context */,
-                      const ExternalJoinRequest* /* request */,
-                      ExternalJoinResponse* /* response */) override
+                      const ExternalJoinRequest* request,
+                      ExternalJoinResponse* response) override
   {
+    if (request->public_group_state() != "publicGroupState") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid PublicGroupState");
+    }
+
+    response->set_state_id(newID(states));
+    response->set_commit("commit");
     return Status::OK; // TODO
   }
 
   // Operations using a group state
   Status PublicGroupState(ServerContext* /* context */,
                           const PublicGroupStateRequest* /* request */,
-                          PublicGroupStateResponse* /* response */) override
+                          PublicGroupStateResponse* response) override
   {
+    response->set_public_group_state("publicGroupState");
     return Status::OK; // TODO
   }
 

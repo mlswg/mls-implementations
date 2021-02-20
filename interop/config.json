@@ -1,6 +1,8 @@
 {
   "clients": [
-    "localhost:50001"
+    "localhost:50001",
+    "localhost:50002",
+    "localhost:50003"
   ],
   "test_vectors": [
     "tree_math",
@@ -23,7 +25,7 @@
     "external_join": [
       {"action": "createGroup", "actor": "alice"},
       {"action": "publicGroupState", "actor": "alice"},
-      {"action": "externalJoin", "actor": "bob"},
+      {"action": "externalJoin", "actor": "bob", "publicGroupState": 1},
       {"action": "handleCommit", "actor": "alice", "commit": 2},
       {"action": "verifyStateAuth"}
     ]

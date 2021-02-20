@@ -151,13 +151,22 @@ func (mc *MockClient) JoinGroup(ctx context.Context, in *pb.JoinGroupRequest) (*
 }
 
 func (mc *MockClient) ExternalJoin(ctx context.Context, in *pb.ExternalJoinRequest) (*pb.ExternalJoinResponse, error) {
-	resp := &pb.ExternalJoinResponse{}
+	if string(in.PublicGroupState) != "publicGroupState" {
+		return nil, status.Error(codes.InvalidArgument, "Invalid PublicGroupState")
+	}
+
+	resp := &pb.ExternalJoinResponse{
+		StateId: newID(mc.states),
+		Commit:  []byte("commit"),
+	}
 	return resp, nil // TODO
 }
 
 // Operations using a group state
 func (mc *MockClient) PublicGroupState(ctx context.Context, in *pb.PublicGroupStateRequest) (*pb.PublicGroupStateResponse, error) {
-	resp := &pb.PublicGroupStateResponse{}
+	resp := &pb.PublicGroupStateResponse{
+		PublicGroupState: []byte("publicGroupState"),
+	}
 	return resp, nil // TODO
 }
 
