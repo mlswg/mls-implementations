@@ -39,6 +39,7 @@ service MLSClient {
   
   rpc Commit(CommitRequest) returns (CommitResponse) {}
   rpc HandleCommit(HandleCommitRequest) returns (HandleCommitResponse) {}
+  rpc HandleExternalCommit(HandleExternalCommitRequest) returns (HandleExternalCommitResponse) {}
 }
 
 // rpc Name
@@ -249,5 +250,15 @@ message HandleCommitRequest {
 }
 
 message HandleCommitResponse { 
+  uint32 state_id = 1;
+}
+
+// rpc HandleExternalCommit
+message HandleExternalCommitRequest {
+  uint32 state_id = 1;
+  bytes commit = 3;
+}
+
+message HandleExternalCommitResponse { 
   uint32 state_id = 1;
 }

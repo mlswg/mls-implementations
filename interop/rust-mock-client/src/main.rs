@@ -382,6 +382,35 @@ impl MlsClient for MlsClientImpl {
 
         Ok(Response::new(resp)) // TODO
     }
+
+    async fn handle_external_commit(
+        &self,
+        request: tonic::Request<HandleExternalCommitRequest>,
+    ) -> Result<tonic::Response<HandleExternalCommitResponse>, tonic::Status> {
+        let obj = request.get_ref();
+        if (!self.known_state_id(obj.state_id)) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "Invalid state ID",
+            ));
+        }
+
+        let obj = request.get_ref();
+        let commit = String::from("commit");
+        let commit_in = String::from_utf8(obj.commit.clone()).unwrap();
+        if (commit != commit_in) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "Invalid commit",
+            ));
+        }
+
+        let resp = HandleExternalCommitResponse{
+            state_id: self.new_state_id(),
+        };
+
+        Ok(Response::new(resp)) // TODO
+    }
 }
 
 #[derive(Clap)]

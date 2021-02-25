@@ -157,7 +157,7 @@ class MLSClientImpl final : public MLSClient::Service
                      CreateGroupResponse* response) override
   {
     response->set_state_id(newID(states));
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   Status CreateKeyPackage(ServerContext* /* context */,
@@ -166,7 +166,7 @@ class MLSClientImpl final : public MLSClient::Service
   {
     response->set_transaction_id(newID(transactions));
     response->set_key_package("keyPackage");
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   Status JoinGroup(ServerContext* /* context */,
@@ -182,7 +182,7 @@ class MLSClientImpl final : public MLSClient::Service
     }
 
     response->set_state_id(newID(states));
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   Status ExternalJoin(ServerContext* /* context */,
@@ -195,7 +195,7 @@ class MLSClientImpl final : public MLSClient::Service
 
     response->set_state_id(newID(states));
     response->set_commit("commit");
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   // Operations using a group state
@@ -204,7 +204,7 @@ class MLSClientImpl final : public MLSClient::Service
                           PublicGroupStateResponse* response) override
   {
     response->set_public_group_state("publicGroupState");
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   Status StateAuth(ServerContext* /* context */,
@@ -216,7 +216,7 @@ class MLSClientImpl final : public MLSClient::Service
     }
 
     response->set_state_auth_secret("stateAuthSecret");
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   Status Export(ServerContext* /* context */,
@@ -260,7 +260,7 @@ class MLSClientImpl final : public MLSClient::Service
     }
 
     response->set_proposal("addProposal");
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   Status UpdateProposal(ServerContext* /* context */,
@@ -308,7 +308,7 @@ class MLSClientImpl final : public MLSClient::Service
 
     response->set_commit("commit");
     response->set_welcome("welcome");
-    return Status::OK; // TODO
+    return Status::OK;
   }
 
   Status HandleCommit(ServerContext* /* context */,
@@ -324,7 +324,23 @@ class MLSClientImpl final : public MLSClient::Service
     }
 
     response->set_state_id(newID(states));
-    return Status::OK; // TODO
+    return Status::OK;
+  }
+
+  Status HandleExternalCommit(ServerContext* /* context */,
+                              const HandleExternalCommitRequest* request,
+                              HandleExternalCommitResponse* response) override
+  {
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    if (request->commit() != "commit") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid commit");
+    }
+
+    response->set_state_id(newID(states));
+    return Status::OK;
   }
 };
 

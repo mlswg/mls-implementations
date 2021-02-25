@@ -277,6 +277,24 @@ func (mc *MockClient) HandleCommit(ctx context.Context, in *pb.HandleCommitReque
 	return resp, nil // TODO
 }
 
+func (mc *MockClient) HandleExternalCommit(ctx context.Context, in *pb.HandleExternalCommitRequest) (*pb.HandleExternalCommitResponse, error) {
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (handle): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
+	if string(in.Commit) != "commit" {
+		return nil, status.Error(codes.InvalidArgument, "Invalid commit")
+	}
+
+	resp := &pb.HandleExternalCommitResponse{
+		StateId: newID(mc.states),
+	}
+
+	mc.states[resp.StateId] = true
+	return resp, nil // TODO
+}
+
 ///
 /// Run the server
 ///

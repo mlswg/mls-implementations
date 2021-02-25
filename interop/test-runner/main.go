@@ -22,15 +22,16 @@ import (
 type ScriptAction string
 
 const (
-	ActionCreateGroup      ScriptAction = "createGroup"
-	ActionCreateKeyPackage ScriptAction = "createKeyPackage"
-	ActionJoinGroup        ScriptAction = "joinGroup"
-	ActionExternalJoin     ScriptAction = "externalJoin"
-	ActionPublicGroupState ScriptAction = "publicGroupState"
-	ActionAddProposal      ScriptAction = "addProposal"
-	ActionCommit           ScriptAction = "commit"
-	ActionHandleCommit     ScriptAction = "handleCommit"
-	ActionVerifyStateAuth  ScriptAction = "verifyStateAuth"
+	ActionCreateGroup          ScriptAction = "createGroup"
+	ActionCreateKeyPackage     ScriptAction = "createKeyPackage"
+	ActionJoinGroup            ScriptAction = "joinGroup"
+	ActionExternalJoin         ScriptAction = "externalJoin"
+	ActionPublicGroupState     ScriptAction = "publicGroupState"
+	ActionAddProposal          ScriptAction = "addProposal"
+	ActionCommit               ScriptAction = "commit"
+	ActionHandleCommit         ScriptAction = "handleCommit"
+	ActionHandleExternalCommit ScriptAction = "handleExternalCommit"
+	ActionVerifyStateAuth      ScriptAction = "verifyStateAuth"
 )
 
 type ScriptStep struct {
@@ -534,6 +535,38 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			Commit:   commit,
 		}
 		resp, err := client.rpc.HandleCommit(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.stateID[step.Actor] = resp.StateId
+
+	case ActionHandleExternalCommit:
+		client := config.ActorClients[step.Actor]
+		var params HandleCommitStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		commit, err := config.GetMessage(params.Commit, "commit")
+		if err != nil {
+			return err
+		}
+
+		byRef := make([][]byte, len(params.ByReference))
+		for i, ix64 := range params.ByReference {
+			byRef[i], err = config.GetMessage(int(ix64), "proposal")
+			if err != nil {
+				return err
+			}
+		}
+
+		req := &pb.HandleExternalCommitRequest{
+			StateId: config.stateID[step.Actor],
+			Commit:  commit,
+		}
+		resp, err := client.rpc.HandleExternalCommit(ctx(), req)
 		if err != nil {
 			return err
 		}
