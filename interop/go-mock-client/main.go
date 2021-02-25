@@ -122,7 +122,7 @@ func (mc *MockClient) CreateGroup(ctx context.Context, in *pb.CreateGroupRequest
 		StateId: newID(mc.states),
 	}
 
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) CreateKeyPackage(ctx context.Context, in *pb.CreateKeyPackageRequest) (*pb.CreateKeyPackageResponse, error) {
@@ -131,7 +131,7 @@ func (mc *MockClient) CreateKeyPackage(ctx context.Context, in *pb.CreateKeyPack
 		KeyPackage:    []byte("keyPackage"),
 	}
 
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) JoinGroup(ctx context.Context, in *pb.JoinGroupRequest) (*pb.JoinGroupResponse, error) {
@@ -147,7 +147,7 @@ func (mc *MockClient) JoinGroup(ctx context.Context, in *pb.JoinGroupRequest) (*
 		StateId: newID(mc.states),
 	}
 
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) ExternalJoin(ctx context.Context, in *pb.ExternalJoinRequest) (*pb.ExternalJoinResponse, error) {
@@ -159,7 +159,7 @@ func (mc *MockClient) ExternalJoin(ctx context.Context, in *pb.ExternalJoinReque
 		StateId: newID(mc.states),
 		Commit:  []byte("commit"),
 	}
-	return resp, nil // TODO
+	return resp, nil
 }
 
 // Operations using a group state
@@ -167,7 +167,7 @@ func (mc *MockClient) PublicGroupState(ctx context.Context, in *pb.PublicGroupSt
 	resp := &pb.PublicGroupStateResponse{
 		PublicGroupState: []byte("publicGroupState"),
 	}
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) StateAuth(ctx context.Context, in *pb.StateAuthRequest) (*pb.StateAuthResponse, error) {
@@ -180,22 +180,46 @@ func (mc *MockClient) StateAuth(ctx context.Context, in *pb.StateAuthRequest) (*
 		StateAuthSecret: []byte("stateAuthSecret"),
 	}
 
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) Export(ctx context.Context, in *pb.ExportRequest) (*pb.ExportResponse, error) {
-	resp := &pb.ExportResponse{}
-	return resp, nil // TODO
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (auth): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
+	resp := &pb.ExportResponse{
+		ExportedSecret: []byte("exportedSecret"),
+	}
+
+	return resp, nil
 }
 
 func (mc *MockClient) Protect(ctx context.Context, in *pb.ProtectRequest) (*pb.ProtectResponse, error) {
-	resp := &pb.ProtectResponse{}
-	return resp, nil // TODO
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (auth): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
+	resp := &pb.ProtectResponse{
+		Ciphertext: in.ApplicationData,
+	}
+
+	return resp, nil
 }
 
 func (mc *MockClient) Unprotect(ctx context.Context, in *pb.UnprotectRequest) (*pb.UnprotectResponse, error) {
-	resp := &pb.UnprotectResponse{}
-	return resp, nil // TODO
+	if !mc.states[in.StateId] {
+		fmt.Printf("Invalid state (auth): %d\n", in.StateId)
+		return nil, status.Error(codes.InvalidArgument, "Invalid state")
+	}
+
+	resp := &pb.UnprotectResponse{
+		ApplicationData: in.Ciphertext,
+	}
+
+	return resp, nil
 }
 
 func (mc *MockClient) StorePSK(ctx context.Context, in *pb.StorePSKRequest) (*pb.StorePSKResponse, error) {
@@ -217,7 +241,7 @@ func (mc *MockClient) AddProposal(ctx context.Context, in *pb.AddProposalRequest
 		Proposal: []byte("addProposal"),
 	}
 
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) UpdateProposal(ctx context.Context, in *pb.UpdateProposalRequest) (*pb.ProposalResponse, error) {
@@ -256,7 +280,7 @@ func (mc *MockClient) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.Com
 		Welcome: []byte("welcome"),
 	}
 
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) HandleCommit(ctx context.Context, in *pb.HandleCommitRequest) (*pb.HandleCommitResponse, error) {
@@ -274,7 +298,7 @@ func (mc *MockClient) HandleCommit(ctx context.Context, in *pb.HandleCommitReque
 	}
 
 	mc.states[resp.StateId] = true
-	return resp, nil // TODO
+	return resp, nil
 }
 
 func (mc *MockClient) HandleExternalCommit(ctx context.Context, in *pb.HandleExternalCommitRequest) (*pb.HandleExternalCommitResponse, error) {
@@ -292,7 +316,7 @@ func (mc *MockClient) HandleExternalCommit(ctx context.Context, in *pb.HandleExt
 	}
 
 	mc.states[resp.StateId] = true
-	return resp, nil // TODO
+	return resp, nil
 }
 
 ///

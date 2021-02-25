@@ -245,23 +245,59 @@ impl MlsClient for MlsClientImpl {
 
     async fn export(
         &self,
-        _request: tonic::Request<ExportRequest>,
+        request: tonic::Request<ExportRequest>,
     ) -> Result<tonic::Response<ExportResponse>, tonic::Status> {
-        Ok(Response::new(ExportResponse::default())) // TODO
+        let obj = request.get_ref();
+        if (!self.known_state_id(obj.state_id)) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("Invalid state ID: {}", obj.state_id),
+            ));
+        }
+
+        let resp = ExportResponse{ 
+            exported_secret: String::from("exportedSecret").into_bytes(),
+        };
+
+        Ok(Response::new(resp))
     }
 
     async fn protect(
         &self,
-        _request: tonic::Request<ProtectRequest>,
+        request: tonic::Request<ProtectRequest>,
     ) -> Result<tonic::Response<ProtectResponse>, tonic::Status> {
-        Ok(Response::new(ProtectResponse::default())) // TODO
+        let obj = request.get_ref();
+        if (!self.known_state_id(obj.state_id)) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("Invalid state ID: {}", obj.state_id),
+            ));
+        }
+
+        let resp = ProtectResponse{ 
+            ciphertext: obj.application_data.clone(),
+        };
+
+        Ok(Response::new(resp))
     }
 
     async fn unprotect(
         &self,
-        _request: tonic::Request<UnprotectRequest>,
+        request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
-        Ok(Response::new(UnprotectResponse::default())) // TODO
+        let obj = request.get_ref();
+        if (!self.known_state_id(obj.state_id)) {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("Invalid state ID: {}", obj.state_id),
+            ));
+        }
+
+        let resp = UnprotectResponse{ 
+            application_data: obj.ciphertext.clone(),
+        };
+
+        Ok(Response::new(resp))
     }
 
     async fn store_psk(

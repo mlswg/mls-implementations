@@ -1,8 +1,34 @@
 {
   "clients": [
-    "localhost:50001"
+    "localhost:50001",
+    "localhost:50002",
+    "localhost:50003"
+  ],
+  "test_vectors": [
+    "tree_math",
+    "encryption",
+    "key_schedule",
+    "transcript",
+    "treekem",
+    "messages"
   ],
   "scripts": {
+    "two_party": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "createKeyPackage", "actor": "bob"},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 1},
+      {"action": "commit", "actor": "alice", "byReference": [2]},
+      {"action": "joinGroup", "actor": "bob", "welcome": 3},
+      {"action": "handleCommit", "actor": "alice", "byReference": [2], "commit": 3},
+      {"action": "verifyStateAuth"}
+    ],
+    "external_join": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "publicGroupState", "actor": "alice"},
+      {"action": "externalJoin", "actor": "bob", "publicGroupState": 1},
+      {"action": "handleCommit", "actor": "alice", "commit": 2},
+      {"action": "verifyStateAuth"}
+    ],
     "stateProperties": [
       {"action": "stateProperties"}
     ]

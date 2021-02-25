@@ -740,7 +740,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				}
 
 				decReq := &pb.UnprotectRequest{
-					StateId:    config.stateID[actor],
+					StateId:    config.stateID[otherActor],
 					Ciphertext: encResp.Ciphertext,
 				}
 				decResp, err := otherClient.rpc.Unprotect(ctx(), decReq)
