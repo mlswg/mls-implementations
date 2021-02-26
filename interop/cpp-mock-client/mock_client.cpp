@@ -2,6 +2,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <cstdlib>
 
 #include <gflags/gflags.h>
 #include <grpcpp/grpcpp.h>
@@ -23,6 +24,15 @@ static constexpr std::array<char, 4> test_vector = { 0, 1, 2, 3 };
 class MLSClientImpl final : public MLSClient::Service
 {
   static const std::string fixed_test_vector;
+
+  std::set<uint32_t> transactions;
+  std::set<uint32_t> states;
+
+  uint32_t newID(std::set<uint32_t>& universe) {
+    auto id = static_cast<uint32_t>(rand());
+    universe.insert(id);
+    return id;
+  }
 
   Status Name(ServerContext* /* context */,
               const NameRequest* /* request */,
@@ -50,43 +60,44 @@ class MLSClientImpl final : public MLSClient::Service
                             const GenerateTestVectorRequest* request,
                             GenerateTestVectorResponse* reply) override
   {
-    std::cout << "Got GenerateTestVector request" << std::endl;
+    std::cout << "Got GenerateTestVector request: ";
     switch (request->test_vector_type()) {
       case TestVectorType::TREE_MATH: {
-        std::cout << "Tree math test vector request" << std::endl;
+        std::cout << "Tree math" << std::endl;
         break;
       }
 
       case TestVectorType::ENCRYPTION: {
-        std::cout << "Encryption test vector request" << std::endl;
+        std::cout << "Encryption" << std::endl;
         break;
       }
 
       case TestVectorType::KEY_SCHEDULE: {
-        std::cout << "Key schedule test vector request" << std::endl;
+        std::cout << "Key schedule" << std::endl;
         break;
       }
 
       case TestVectorType::TRANSCRIPT: {
-        std::cout << "Transcript test vector request" << std::endl;
+        std::cout << "Transcript" << std::endl;
         break;
       }
 
       case TestVectorType::TREEKEM: {
-        std::cout << "TreeKEM test vector request" << std::endl;
+        std::cout << "TreeKEM" << std::endl;
         break;
       }
 
       case TestVectorType::MESSAGES: {
-        std::cout << "Messages test vector request" << std::endl;
+        std::cout << "Messages" << std::endl;
         break;
       }
 
-      default:
+      default: {
+        std::cout << "Invalid" << std::endl;
         return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
+      }
     }
 
-    std::cout << "  ... ok" << std::endl;
     reply->set_test_vector(fixed_test_vector);
     return Status::OK;
   }
@@ -95,40 +106,42 @@ class MLSClientImpl final : public MLSClient::Service
                           const VerifyTestVectorRequest* request,
                           VerifyTestVectorResponse* /* reply */) override
   {
-    std::cout << "Got VerifyTestVector request" << std::endl;
+    std::cout << "Got VerifyTestVector request: ";
     switch (request->test_vector_type()) {
       case TestVectorType::TREE_MATH: {
-        std::cout << "Tree math test vector request" << std::endl;
+        std::cout << "Tree math" << std::endl;
         break;
       }
 
       case TestVectorType::ENCRYPTION: {
-        std::cout << "Encryption test vector request" << std::endl;
+        std::cout << "Encryption" << std::endl;
         break;
       }
 
       case TestVectorType::KEY_SCHEDULE: {
-        std::cout << "Key schedule test vector request" << std::endl;
+        std::cout << "Key schedule" << std::endl;
         break;
       }
 
       case TestVectorType::TRANSCRIPT: {
-        std::cout << "Transcript test vector request" << std::endl;
+        std::cout << "Transcript" << std::endl;
         break;
       }
 
       case TestVectorType::TREEKEM: {
-        std::cout << "TreeKEM test vector request" << std::endl;
+        std::cout << "TreeKEM" << std::endl;
         break;
       }
 
       case TestVectorType::MESSAGES: {
-        std::cout << "Messages test vector request" << std::endl;
+        std::cout << "Messages" << std::endl;
         break;
       }
 
-      default:
+      default: {
+        std::cout << "Invalid" << std::endl;
         return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
+      }
     }
 
     if (request->test_vector() != fixed_test_vector) {
@@ -141,45 +154,69 @@ class MLSClientImpl final : public MLSClient::Service
   // Ways to become a member of a group
   Status CreateGroup(ServerContext* /* context */,
                      const CreateGroupRequest* /* request */,
-                     CreateGroupResponse* /* response */) override
+                     CreateGroupResponse* response) override
   {
-    return Status::OK; // TODO
+    response->set_state_id(newID(states));
+    return Status::OK;
   }
 
   Status CreateKeyPackage(ServerContext* /* context */,
                           const CreateKeyPackageRequest* /* request */,
-                          CreateKeyPackageResponse* /* response */) override
+                          CreateKeyPackageResponse* response) override
   {
-    return Status::OK; // TODO
+    response->set_transaction_id(newID(transactions));
+    response->set_key_package("keyPackage");
+    return Status::OK;
   }
 
   Status JoinGroup(ServerContext* /* context */,
-                   const JoinGroupRequest* /* request */,
-                   JoinGroupResponse* /* response */) override
+                   const JoinGroupRequest* request,
+                   JoinGroupResponse* response) override
   {
-    return Status::OK; // TODO
+    if (transactions.count(request->transaction_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid transaction");
+    }
+
+    if (request->welcome() != "welcome") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid welcome");
+    }
+
+    response->set_state_id(newID(states));
+    return Status::OK;
   }
 
   Status ExternalJoin(ServerContext* /* context */,
-                      const ExternalJoinRequest* /* request */,
-                      ExternalJoinResponse* /* response */) override
+                      const ExternalJoinRequest* request,
+                      ExternalJoinResponse* response) override
   {
-    return Status::OK; // TODO
+    if (request->public_group_state() != "publicGroupState") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid PublicGroupState");
+    }
+
+    response->set_state_id(newID(states));
+    response->set_commit("commit");
+    return Status::OK;
   }
 
   // Operations using a group state
   Status PublicGroupState(ServerContext* /* context */,
                           const PublicGroupStateRequest* /* request */,
-                          PublicGroupStateResponse* /* response */) override
+                          PublicGroupStateResponse* response) override
   {
-    return Status::OK; // TODO
+    response->set_public_group_state("publicGroupState");
+    return Status::OK;
   }
 
   Status StateAuth(ServerContext* /* context */,
-                   const StateAuthRequest* /* request */,
-                   StateAuthResponse* /* response */) override
+                   const StateAuthRequest* request,
+                   StateAuthResponse* response) override
   {
-    return Status::OK; // TODO
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    response->set_state_auth_secret("stateAuthSecret");
+    return Status::OK;
   }
 
   Status Export(ServerContext* /* context */,
@@ -211,10 +248,19 @@ class MLSClientImpl final : public MLSClient::Service
   }
 
   Status AddProposal(ServerContext* /* context */,
-                     const AddProposalRequest* /* request */,
-                     ProposalResponse* /* response */) override
+                     const AddProposalRequest* request,
+                     ProposalResponse* response) override
   {
-    return Status::OK; // TODO
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    if (request->key_package() != "keyPackage") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid commit");
+    }
+
+    response->set_proposal("addProposal");
+    return Status::OK;
   }
 
   Status UpdateProposal(ServerContext* /* context */,
@@ -253,17 +299,48 @@ class MLSClientImpl final : public MLSClient::Service
   }
 
   Status Commit(ServerContext* /* context */,
-                const CommitRequest* /* request */,
-                CommitResponse* /* response */) override
+                const CommitRequest* request,
+                CommitResponse* response) override
   {
-    return Status::OK; // TODO
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    response->set_commit("commit");
+    response->set_welcome("welcome");
+    return Status::OK;
   }
 
   Status HandleCommit(ServerContext* /* context */,
-                      const HandleCommitRequest* /* request */,
-                      HandleCommitResponse* /* response */) override
+                      const HandleCommitRequest* request,
+                      HandleCommitResponse* response) override
   {
-    return Status::OK; // TODO
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    if (request->commit() != "commit") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid commit");
+    }
+
+    response->set_state_id(newID(states));
+    return Status::OK;
+  }
+
+  Status HandleExternalCommit(ServerContext* /* context */,
+                              const HandleExternalCommitRequest* request,
+                              HandleExternalCommitResponse* response) override
+  {
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    if (request->commit() != "commit") {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid commit");
+    }
+
+    response->set_state_id(newID(states));
+    return Status::OK;
   }
 };
 
