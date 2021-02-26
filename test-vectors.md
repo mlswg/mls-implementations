@@ -268,6 +268,7 @@ Format:
   "add_sender": /* uint32 */,
   "my_key_package": /* hex-encoded binary data */,
   "my_path_secret": /* hex-encoded binary data */,
+  "my_leaf_secret": /* hex-encoded binary data */,
 
   "update_sender": /* uint32 */,
   "update_path": /* hex-encoded binary data */,
@@ -280,6 +281,9 @@ Format:
   "tree_hash_after": /* hex-encoded binary data */
 }
 ```
+
+* An empty group context is used
+* The exclusion list in the update path is empty
 
 Some of the binary fields contain TLS-serialized objects:
 * `ratchet_tree_before` and `ratchet_tree_after` contain serialized ratchet
@@ -294,6 +298,7 @@ Verification:
 * Identify the test participant's location in the tree using `my_key_package`
 * Initialize the private state of the tree by setting `my_path_secret` at the
   common ancestor between the test participant's leaf and `add_sender`
+  and `my_leaf_secret` for the leaf
 * Verify that the root secret for the initial tree matches `root_secret_after_add`
 * Process the `update_path` to get a new root secret and update the tree
 * Verify that the new root root secret matches `root_secret_after_update`
