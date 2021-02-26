@@ -220,24 +220,39 @@ class MLSClientImpl final : public MLSClient::Service
   }
 
   Status Export(ServerContext* /* context */,
-                const ExportRequest* /* request */,
-                ExportResponse* /* response */) override
+                   const ExportRequest* request,
+                   ExportResponse* response) override
   {
-    return Status::OK; // TODO
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    response->set_exported_secret("exportedSecret");
+    return Status::OK;
   }
 
   Status Protect(ServerContext* /* context */,
-                 const ProtectRequest* /* request */,
-                 ProtectResponse* /* response */) override
+                   const ProtectRequest* request,
+                   ProtectResponse* response) override
   {
-    return Status::OK; // TODO
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    response->set_ciphertext(request->application_data());
+    return Status::OK;
   }
 
   Status Unprotect(ServerContext* /* context */,
-                   const UnprotectRequest* /* request */,
-                   UnprotectResponse* /* response */) override
+                   const UnprotectRequest* request,
+                   UnprotectResponse* response) override
   {
-    return Status::OK; // TODO
+    if (states.count(request->state_id()) == 0) {
+      return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
+    }
+
+    response->set_application_data(request->ciphertext());
+    return Status::OK;
   }
 
   Status StorePSK(ServerContext* /* context */,
