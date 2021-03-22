@@ -234,6 +234,7 @@ Format:
   "commit": /* hex-encoded TLS-serialized MLSPlaintext(Commit) */
   
   // Computed values
+  "group_context": /* hex-encoded binary data */,
   "confirmed_transcript_hash_after": /* hex-encoded binary data */,
   "interim_transcript_hash_after": /* hex-encoded binary data */,
 }
@@ -243,6 +244,7 @@ Verification:
 * Verify that `confirmed_transcript_hash_after` and
   `interim_transcript_hash_after` are the result of updating
   `interim_transcript_hash_before` with `commit`
+* Verify that group context matches the provided `group_context` value
 * Verify that `commit.confirmation_tag` is present and verifies using
   `confirmed_transcript_hash_after` and `confirmation_key`
 * Verify that `commit.membership_tag` is present and verifies using
