@@ -266,12 +266,13 @@ Format:
   "ratchet_tree_before": /* hex-encoded binary data */,
   
   "add_sender": /* uint32 */,
+  "my_leaf_secret": /* hex-encoded binary data */,
   "my_key_package": /* hex-encoded binary data */,
   "my_path_secret": /* hex-encoded binary data */,
-  "my_leaf_secret": /* hex-encoded binary data */,
 
   "update_sender": /* uint32 */,
   "update_path": /* hex-encoded binary data */,
+  "update_group_context": /* hex-encoded binary data */,
 
   // Computed values
   "tree_hash_before": /* hex-encoded binary data */,
@@ -282,14 +283,12 @@ Format:
 }
 ```
 
-* An empty group context is used
-* The exclusion list in the update path is empty
-
 Some of the binary fields contain TLS-serialized objects:
 * `ratchet_tree_before` and `ratchet_tree_after` contain serialized ratchet
   trees, as in [the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
 * `my_key_package` contains a KeyPackage object
 * `update_path` contains an UpdatePath object
+* The exclusion list in the update path is empty.
 
 Verification:
 * Verify that the tree hash of `tree_before` equals `tree_hash_before`
