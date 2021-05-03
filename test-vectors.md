@@ -270,11 +270,13 @@ Format:
   "ratchet_tree_before": /* hex-encoded binary data */,
   
   "add_sender": /* uint32 */,
+  "my_leaf_secret": /* hex-encoded binary data */,
   "my_key_package": /* hex-encoded binary data */,
   "my_path_secret": /* hex-encoded binary data */,
 
   "update_sender": /* uint32 */,
   "update_path": /* hex-encoded binary data */,
+  "update_group_context": /* hex-encoded binary data */,
 
   // Computed values
   "tree_hash_before": /* hex-encoded binary data */,
@@ -290,6 +292,7 @@ Some of the binary fields contain TLS-serialized objects:
   trees, as in [the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
 * `my_key_package` contains a KeyPackage object
 * `update_path` contains an UpdatePath object
+* The exclusion list in the update path is empty.
 
 Verification:
 * Verify that the tree hash of `tree_before` equals `tree_hash_before`
@@ -298,6 +301,7 @@ Verification:
 * Identify the test participant's location in the tree using `my_key_package`
 * Initialize the private state of the tree by setting `my_path_secret` at the
   common ancestor between the test participant's leaf and `add_sender`
+  and `my_leaf_secret` for the leaf
 * Verify that the root secret for the initial tree matches `root_secret_after_add`
 * Process the `update_path` to get a new root secret and update the tree
 * Verify that the new root root secret matches `root_secret_after_update`
