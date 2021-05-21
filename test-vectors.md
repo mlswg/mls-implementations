@@ -37,6 +37,15 @@ Test vectors are JSON serialized.  `optional<type>` is serialized as the value
 itself or `null` if not present.  MLS structs are binary encoded according to
 spec and represented as hex-encoded strings in JSON.
 
+### Negative Test Cases
+Each test vector has a `result` field that is either `"valid"` or `"invalid"`.
+If it is `"valid"`, the test vector must run without error.
+If it is `"invalid"`, the test vector must fail.
+
+Each test vector additionally has an `error` field that is empty if `result` is `"valid"`.
+If result is `"invalid"`, the `error` field holds a `uint16` error code.
+Error codes are defined for each test vector individually.
+
 ## Tree Math
 
 Parameters:
@@ -46,6 +55,8 @@ Format:
 
 ```
 {
+  "result": /* "valid" or "invalid" */,
+  "error": /* uint16 */,
   "n_leaves": /* uint32 */,
   "n_nodes": /* uint32 */,
   "root": [ /* array of uint32 */ ],
@@ -68,6 +79,13 @@ Verification:
   tree with `n_leaves` leaves
 * `sibling[i]` is the node index of the sibling of the node with index `i` in a
   tree with `n_leaves` leaves
+* `error` codes:
+  * 0 := LeafHasNoChildren
+  * 1 := RootHasNoParent
+  * 2 := NotAParentNode
+  * 3 := LeafNotInTree
+  * 4 := NodeNotInTree
+  * 5 := InvalidInput
 
 ## Encryption
 
@@ -80,6 +98,8 @@ Format:
 
 ```text
 {
+  "result": /* "valid" or "invalid" */,
+  "error": /* uint16 */,
   "cipher_suite": /* uint16 */,
   "n_leaves": /* uint32 */,
   "encryption_secret": /* hex-encoded binary data */,
@@ -137,6 +157,10 @@ For all `N` entries in the `leaves` and all generations `j`
   `j`.
 * `sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)`
 * `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)`
+* `error` codes:
+  * 0 := HandshakeDecryptionError
+  * 1 := ApplicationDecryptionError
+  * 2 := SenderDataInfoDecryptionError
 
 The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes are
 tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
@@ -154,6 +178,8 @@ Format:
 
 ```text
 {
+  "result": /* "valid" or "invalid" */,
+  "error": /* uint16 */,
   "cipher_suite": /* uint16 */,
   
   // Chosen by the generator
@@ -210,6 +236,20 @@ Verification:
     * `init_key` from the prior epoch or `initial_init_secret`
     * `commit_secret` and `psk_secret` as specified
     * `GroupContext_[n]` as computed above
+* `error` codes:
+  * 0  := InvalidGroupContext
+  * 1  := InvalidJoinerSecret
+  * 2  := InvalidWelcomeSecret
+  * 3  := InvalidInitSecret
+  * 4  := InvalidSenderDataSecret
+  * 5  := InvalidEncryptionSecret
+  * 6  := InvalidExporterSecret
+  * 7  := InvalidAuthenticationSecret
+  * 8  := InvalidExternalSecret
+  * 9  := InvalidConfirmationKey
+  * 10 := InvalidMembershipKey
+  * 11 := InvalidResumptionSecret
+  * 12 := InvalidExternalPub
 
 ## Commits and Transcript Hashes
 
