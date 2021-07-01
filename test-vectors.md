@@ -334,7 +334,15 @@ Verification:
 * Verify that the tree now matches `tree_after`
 * `error` codes:
   * 1 := ParentHashMissing
-  * 2 := InvalidParentHash
+  * 2 := InvalidKeyPackageSignature
+  * 3 := InvalidCiphersuite
+  * 4 := MissingCapabilitiesExtension
+  * 5 := InvalidCapabilitiesExtension
+  * 6 := MissingLifeTimeExtension
+  * 7 := BeforeLifeTime
+  * 8 := AfterLifeTime
+  * 9 := InvalidParentHash
+  * 16 := InvalidWelcomeKey
 
 Among other things, this test vector ensure the following spec requirements
 
@@ -343,6 +351,17 @@ Among other things, this test vector ensure the following spec requirements
 > [about parent hash] To this end, when processing a Commit message clients MUST recompute the expected value of parent_hash for the committer's new leaf and verify that it matches the parent_hash value in the supplied leaf_key_package.
 
 > [about parent hash] Moreover, when joining a group, new members MUST authenticate each non-blank parent node P.
+
+> A KeyPackage object with an invalid signature field MUST be considered malformed.
+
+> KeyPackage objects MUST contain at least two extensions, [...]
+
+> [about capabilities] This extension MUST be always present in a KeyPackage. Extensions that appear in the extensions field of a KeyPackage MUST be included in the extensions field of the capabilities extension.
+
+> [about lifetime] A client MUST NOT use the data in a KeyPackage for any processing before the not_before date, or after the not_after date
+
+> [about the welcome message] The private key MUST be the private key that corresponds to the public key in the node.
+
 
 ## Messages
 
