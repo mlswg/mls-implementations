@@ -291,6 +291,7 @@ Format:
   "error": /* uint16 */,
 
   "cipher_suite": /* uint16 */,
+  "date": /* uint64 */,
 
   // Chosen by the generator
   "ratchet_tree_before": /* hex-encoded binary data */,
@@ -373,6 +374,7 @@ Format:
 {
   "result": /* "valid" or "invalid" */,
   "error": /* uint16 */,
+  "date": /* uint64 */,
 
   "key_package": /* serialized KeyPackage */,
   "capabilities": /* serialized Capabilities */,
