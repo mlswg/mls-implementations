@@ -348,8 +348,8 @@ As elsewhere, the serialized binary objects are hex-encoded.
 Verification:
 * The contents of each field must decode using the corresponding structure
 * Each decoded object must re-encode to produce the bytes in the test vector
+* The signature on each message must be valid
 
 The specific contents of the objects are chosen by the creator of the test
-vectors.  The objects produced must be syntactically valid, but are not required
-to meet any other requirements for such objects.  For example, signatures or MAC
-values may be invalid.  Optional fields should be populated.
+vectors.  The objects produced must be syntactically valid. The optional MAC
+values may be invalid but should be populated.
