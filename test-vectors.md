@@ -155,7 +155,7 @@ Format:
 ```text
 {
   "cipher_suite": /* uint16 */,
-  
+
   // Chosen by the generator
   "group_id": /* hex-encoded binary data */,
   "initial_init_secret": /* hex-encoded binary data */,
@@ -167,14 +167,14 @@ Format:
       "commit_secret": /* hex-encoded binary data */,
       "psk_secret": /* hex-encoded binary data */,
       "confirmed_transcript_hash": /* hex-encoded binary data */,
-      
+
       // Computed values
       "group_context": /* hex-encoded binary data */,
-      
+
       "joiner_secret": /* hex-encoded binary data */,
       "welcome_secret": /* hex-encoded binary data */,
       "init_secret": /* hex-encoded binary data */,
-      
+
       "sender_data_secret": /* hex-encoded binary data */,
       "encryption_secret": /* hex-encoded binary data */,
       "exporter_secret": /* hex-encoded binary data */,
@@ -232,7 +232,7 @@ Format:
   "membership_key": /* hex-encoded binary data */,
   "confirmation_key": /* hex-encoded binary data */,
   "commit": /* hex-encoded TLS-serialized MLSPlaintext(Commit) */
-  
+
   // Computed values
   "group_context": /* hex-encoded binary data */,
   "confirmed_transcript_hash_after": /* hex-encoded binary data */,
@@ -268,9 +268,9 @@ Format:
 
   // Chosen by the generator
   "ratchet_tree_before": /* hex-encoded binary data */,
-  
+
   "add_sender": /* uint32 */,
-  "my_leaf_secret": /* hex-encoded binary data */,
+  "my_private_key": /* hex-encoded binary data */,
   "my_key_package": /* hex-encoded binary data */,
   "my_path_secret": /* hex-encoded binary data */,
 
@@ -299,9 +299,13 @@ Verification:
 * Verify that the tree hash of `tree_after` equals `tree_hash_after`
 * Verify that both `tree_before` and `tree_after` have valid parent hashes
 * Identify the test participant's location in the tree using `my_key_package`
-* Initialize the private state of the tree by setting `my_path_secret` at the
-  common ancestor between the test participant's leaf and `add_sender`
-  and `my_leaf_secret` for the leaf
+* Initialize the private state of the tree:
+  * Initialize the private key of the test participant's leaf to be
+    `my_private_key`
+  * Determine the common ancestor between the test participant's leaf and the
+    `add_sender`
+  * Derive the private keys of the nodes along the direct path of the common
+    ancestor by using `my_path_secret` as starting point
 * Verify that the root secret for the initial tree matches `root_secret_after_add`
 * Process the `update_path` to get a new root secret and update the tree
 * Verify that the new root root secret matches `root_secret_after_update`
