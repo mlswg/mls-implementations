@@ -26,7 +26,7 @@
       {"action": "createGroup", "actor": "alice"},
       {"action": "publicGroupState", "actor": "alice"},
       {"action": "externalJoin", "actor": "bob", "publicGroupState": 1},
-      {"action": "handleCommit", "actor": "alice", "commit": 2},
+      {"action": "handleExternalCommit", "actor": "alice", "commit": 2},
       {"action": "verifyStateAuth"}
     ],
     "stateProperties": [
