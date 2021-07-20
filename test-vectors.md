@@ -228,6 +228,7 @@ Format:
   "tree_hash_before": /* hex-encoded binary data */,
   "confirmed_transcript_hash_before": /* hex-encoded binary data */,
   "interim_transcript_hash_before": /* hex-encoded binary data */,
+  "credential": /* hex-encoded binary data */,
 
   "membership_key": /* hex-encoded binary data */,
   "confirmation_key": /* hex-encoded binary data */,
@@ -247,6 +248,7 @@ Verification:
 * Verify that group context matches the provided `group_context` value
 * Verify that `commit.confirmation_tag` is present and verifies using
   `confirmed_transcript_hash_after` and `confirmation_key`
+* Verify that the commit has a valid signature using the `credential`
 * Verify that `commit.membership_tag` is present and verifies using
   `membership_key` and a GroupContext object with the following contents:
   * `group_id = group_id`
