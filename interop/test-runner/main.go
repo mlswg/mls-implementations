@@ -157,7 +157,7 @@ type Client struct {
 }
 
 func ctx() context.Context {
-	c, _ := context.WithTimeout(context.Background(), time.Second)
+	c, _ := context.WithTimeout(context.Background(), time.Second * 10)
 	return c
 }
 
