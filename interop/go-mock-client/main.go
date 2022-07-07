@@ -264,7 +264,7 @@ func (mc *MockClient) ReInitProposal(ctx context.Context, in *pb.ReInitProposalR
 	return resp, nil // TODO
 }
 
-func (mc *MockClient) GroupContextExtensionsProposal(ctx context.Context, in *pb.GroupContextExtensionsProposalRequest) (*pb.ProposalResponse, error) {
+func (mc *MockClient) AppAckProposal(ctx context.Context, in *pb.AppAckProposalRequest) (*pb.ProposalResponse, error) {
 	resp := &pb.ProposalResponse{}
 	return resp, nil // TODO
 }
