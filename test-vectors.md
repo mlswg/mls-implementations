@@ -165,7 +165,13 @@ Format:
       // Chosen by the generator
       "tree_hash": /* hex-encoded binary data */,
       "commit_secret": /* hex-encoded binary data */,
-      "psk_secret": /* hex-encoded binary data */,
+      "psks": [
+        {
+          psk: /* hex-encoded binary data */,
+          psk_id: /* hex encoded PreSharedKeyID */
+        },
+        ...
+      ],
       "confirmed_transcript_hash": /* hex-encoded binary data */,
       
       // Computed values
@@ -209,6 +215,7 @@ Verification:
     inputs:
     * `init_key` from the prior epoch or `initial_init_secret`
     * `commit_secret` and `psk_secret` as specified
+      * The `psk_secret` is computed from the `psks` [as defined in the specification](https://github.com/mlswg/mls-protocol/blob/main/draft-ietf-mls-protocol.md#pre-shared-keys)
     * `GroupContext_[n]` as computed above
 
 ## Commits and Transcript Hashes
