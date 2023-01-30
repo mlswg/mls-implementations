@@ -47,9 +47,3 @@ A `stateUpdate` outputted after processing a commit is a list consisting of zero
 * Key `updated[i]`, value `leafIndex` denotes that an update from a member with given `leafIndex` was applied.
 * Key `removedIndex[i]`, value `leafIndex` followed by key `removedLeaf[i]`, value `leafNode` denotes that a member who had given `leafIndex` was removed and his leaf node (no longer in the tree) used to be `leafNode` (represented as TLS-serialized hex-encoded bytes).
 * Key `psks[i]`, value `pskId` denotes that a PSK with given `pskId` was mixed into the key schedule. The value `pskId` includes all data from `PreSharedKeyID` except `nonce`. It is TLS-serialized and hex-encoded.
-
-
-
-
-
-
