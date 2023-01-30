@@ -24,7 +24,6 @@ Each action must specify two values: `action` indicating the action type (e.g. `
 
 The outputs of all actions are logged in the transcript. They can be either packets packets sent to the delivery service (logged as hex-encoded bytes) or values outputted to the user (stored as strings). The transcript is printed to STDOUT.
 
-
 The following actions are supported.
 
 

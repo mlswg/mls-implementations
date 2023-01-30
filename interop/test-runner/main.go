@@ -42,6 +42,8 @@ const (
 
 	ScriptStateProperties = "stateProperties"
 	ActorLeader           = "leader"
+
+	TimeoutSeconds = 120
 )
 
 type ScriptStep struct {
@@ -175,7 +177,7 @@ type Client struct {
 }
 
 func ctx() context.Context {
-	c, _ := context.WithTimeout(context.Background(), time.Second*120)
+	c, _ := context.WithTimeout(context.Background(), time.Second*TimeoutSeconds)
 	return c
 }
 
