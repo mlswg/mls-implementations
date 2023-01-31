@@ -121,9 +121,9 @@ Verification:
 For all `N` entries in the `leaves` and all generations `j`
 * `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`
 * `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
-* `leaves[N].handshake[j].plaintext` represents an MLSPlaintext containing a
+* `leaves[N].handshake[j].plaintext` represents an PublicMessage containing a
   handshake message (Proposal or Commit) from leaf `N`
-* `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object that
+* `leaves[N].handshake[j].ciphertext` represents an PrivateMessage object that
   successfully decrypts to an MLSPlaintext equivalent to
   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
   `j`.
@@ -131,7 +131,7 @@ For all `N` entries in the `leaves` and all generations `j`
 * `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
 * `leaves[N].application[j].plaintext` represents an MLSPlaintext containing
   application data from leaf `N`
-* `leaves[N].application[j].ciphertext` represents an MLSCiphertext object that
+* `leaves[N].application[j].ciphertext` represents an PrivateMessage object that
   successfully decrypts to an MLSPlaintext equivalent to
   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
   `j`.
