@@ -1,11 +1,16 @@
 # List of existing MLS implementations
 
- - `mlspp` (C++) [https://github.com/cisco/mlspp](https://github.com/cisco/mlspp) (Status: draft-11 in progress)
- - `OpenMLS` (Rust) [https://github.com/openmls/openmls](https://github.com/openmls/openmls) (Status: draft-11 in progress)
- - `go-mls` (Go) [https://github.com/cisco/go-mls](https://github.com/cisco/go-mls) (Status: roughly draft-09)
- - `mls-ts` (TypeScript) [ https://gitlab.matrix.org/matrix-org/mls-ts]( https://gitlab.matrix.org/matrix-org/mls-ts) (Status: PoC)
+ - `mlspp` (C++) [https://github.com/cisco/mlspp](https://github.com/cisco/mlspp) (Status: draft-17 in progress)
+ - `OpenMLS` (Rust) [https://github.com/openmls/openmls](https://github.com/openmls/openmls) (Status: draft-17 in progress)
+ - [Wickr](https://wickr.com/) (Rust) proprietary implementation (Status: draft-17 in progress)
+ - `MLS*` (F*) (Status: draft-16)
 
 ## Older / out of date links
+
+### Earlier MLS implementations
+
+ - `go-mls` (Go) [https://github.com/cisco/go-mls](https://github.com/cisco/go-mls) (Status: roughly draft-09)
+ - `mls-ts` (TypeScript) [ https://gitlab.matrix.org/matrix-org/mls-ts]( https://gitlab.matrix.org/matrix-org/mls-ts) (Status: PoC)
 
 ### TreeKEM implementations
 
