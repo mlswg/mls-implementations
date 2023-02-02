@@ -48,7 +48,7 @@ Format:
 {
   "n_leaves": /* uint32 */,
   "n_nodes": /* uint32 */,
-  "root": [ /* array of uint32 */ ],
+  "root": /* uint32 */,
   "left": [ /* array of optional<uint32> */ ],
   "right": [ /* array of optional<uint32> */ ],
   "parent": [ /* array of optional<uint32> */ ],
@@ -59,7 +59,7 @@ Format:
 Verification:
 
 * `n_nodes` is the number of nodes in the tree with `n_leaves` leaves
-* `root[i]` is the root node index of the tree with `i+1` leaves
+* `root` is the root node index of the tree
 * `left[i]` is the node index of the left child of the node with index `i` in a
   tree with `n_leaves` leaves
 * `right[i]` is the node index of the right child of the node with index `i` in
