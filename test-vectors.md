@@ -159,10 +159,11 @@ Format:
   
   // Chosen by the generator
   "group_id": /* hex-encoded binary data */,
-  "initial_init_secret": /* hex-encoded binary data */,
+  "joiner_secret": /* hex-encoded binary data */,
 
   "epochs": [
     {
+      epoch: /* uint64 */,
       // Chosen by the generator
       "tree_hash": /* hex-encoded binary data */,
       "commit_secret": /* hex-encoded binary data */,
@@ -202,19 +203,20 @@ Format:
 Verification:
 * Initialize the first key schedule epoch for the group [as defined in the
   specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation),
-  using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the
+  using `group_id`, `initial_tree_hash`, and `joiner_secret` for the
   non-constant values.
-* For epoch `i`:
+* For epoch `epoch[i]`:
   * Construct a GroupContext with the following contents:
+    * `cipher_suite` as specified
     * `group_id` as specified
-    * `epoch = i`
+    * `epoch` as specified
     * `tree_hash` as specified
     * `confirmed_transcript_hash` as specified
     * `extensions = {}`
   * Verify that group context matches the provided `group_context` value
   * Verify that the key schedule outputs are as specified given the following
     inputs:
-    * `init_key` from the prior epoch or `initial_init_secret`
+    * `init_key` from the prior epoch or `joiner_secret`
     * `commit_secret` and `psk_secret` as specified
       * The `psk_secret` is computed from the `psks` [as defined in the specification](https://github.com/mlswg/mls-protocol/blob/main/draft-ietf-mls-protocol.md#pre-shared-keys)
     * `GroupContext_[n]` as computed above
