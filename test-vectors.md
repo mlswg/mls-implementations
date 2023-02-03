@@ -40,20 +40,22 @@ spec and represented as hex-encoded strings in JSON.
 ## Tree Math
 
 Parameters:
-* Number of leaves in the test tree
+* A range of test tree sizes
 
 Format:
 
 ```
-{
-  "n_leaves": /* uint32 */,
-  "n_nodes": /* uint32 */,
-  "root": /* uint32 */,
-  "left": [ /* array of optional<uint32> */ ],
-  "right": [ /* array of optional<uint32> */ ],
-  "parent": [ /* array of optional<uint32> */ ],
-  "sibling": [ /* array of optional<uint32> */ ]
-}
+[
+  {
+    "n_leaves": /* uint32 */,
+    "n_nodes": /* uint32 */,
+    "root": /* uint32 */,
+    "left": [ /* array of optional<uint32> */ ],
+    "right": [ /* array of optional<uint32> */ ],
+    "parent": [ /* array of optional<uint32> */ ],
+    "sibling": [ /* array of optional<uint32> */ ]
+  }
+]
 ```
 
 Verification:
