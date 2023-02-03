@@ -48,7 +48,7 @@ Format:
 {
   "n_leaves": /* uint32 */,
   "n_nodes": /* uint32 */,
-  "root": [ /* array of uint32 */ ],
+  "root": /* uint32 */,
   "left": [ /* array of optional<uint32> */ ],
   "right": [ /* array of optional<uint32> */ ],
   "parent": [ /* array of optional<uint32> */ ],
@@ -59,7 +59,7 @@ Format:
 Verification:
 
 * `n_nodes` is the number of nodes in the tree with `n_leaves` leaves
-* `root[i]` is the root node index of the tree with `i+1` leaves
+* `root` is the root node index of the tree
 * `left[i]` is the node index of the left child of the node with index `i` in a
   tree with `n_leaves` leaves
 * `right[i]` is the node index of the right child of the node with index `i` in
@@ -92,9 +92,9 @@ Format:
   },
   "leaves": [
     {
-      "generations": /* uint32 */,
       "handshake": [ /* array with `generations` handshake keys and nonces */
         {
+          "generation": /* uint32 */,
           "key": /* hex-encoded binary data */,
           "nonce": /* hex-encoded binary data */,
           "plaintext": /* hex-encoded binary data */
@@ -104,6 +104,7 @@ Format:
       ],
       "application": [ /* array with `generations` application keys and nonces */
         {
+          "generation": /* uint32 */,
           "key": /* hex-encoded binary data */,
           "nonce": /* hex-encoded binary data */,
           "plaintext": /* hex-encoded binary data */
@@ -118,23 +119,23 @@ Format:
 
 Verification:
 
-For all `N` entries in the `leaves` and all generations `j`
-* `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`
-* `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
-* `leaves[N].handshake[j].plaintext` represents an MLSPlaintext containing a
+For all `N` entries in the `leaves`
+* `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[leaves[N].generation]`
+* `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[leaves[N].generation]`
+* `leaves[N].handshake[j].plaintext` represents a PublicMessage containing a
   handshake message (Proposal or Commit) from leaf `N`
-* `leaves[N].handshake[j].ciphertext` represents an MLSCiphertext object that
+* `leaves[N].handshake[j].ciphertext` represents a PrivateMessage object that
   successfully decrypts to an MLSPlaintext equivalent to
   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
-  `j`.
-* `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`
-* `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
-* `leaves[N].application[j].plaintext` represents an MLSPlaintext containing
+  `leaves[N].generation`.
+* `leaves[N].application[j].key = application_ratchet_key_[2*N]_[leaves[N].generation]`
+* `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[leaves[N].generation]`
+* `leaves[N].application[j].plaintext` represents a MLSPlaintext containing
   application data from leaf `N`
-* `leaves[N].application[j].ciphertext` represents an MLSCiphertext object that
+* `leaves[N].application[j].ciphertext` represents a PrivateMessage object that
   successfully decrypts to an MLSPlaintext equivalent to
   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
-  `j`.
+  `leaves[N].generation`.
 * `sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)`
 * `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)`
 
