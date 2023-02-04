@@ -38,7 +38,14 @@ the syntax of the messages used for MLS (independent of semantics).
 * `optional<type>` is serialized as the value itself or `null` if not present.
 * MLS structs are binary encoded according to spec and represented as
   hex-encoded strings in JSON.
-
+* HPKE public keys and signature public keys are encoded in the formats
+  described in the MLS specification.
+* HPKE private keys are encoded according to the `SerializePrivateKey` function
+  for the HPKE method for the ciphersuite.
+* Signature private keys are encoded similarly:
+  * ECDSA private keys are encoded using the `Field-Element-to-Octet-String`
+    transofrmation (i.e., as big-endian integers)
+  * EdDSA private keys are encoded in their native byte string representation.
 
 ## Tree Math
 
@@ -71,6 +78,80 @@ Verification:
   tree with `n_leaves` leaves
 * `sibling[i]` is the node index of the sibling of the node with index `i` in a
   tree with `n_leaves` leaves
+
+## Crypto Basics
+
+Parameters:
+* Ciphersuite
+
+Format:
+
+```text
+{
+  "cipher_suite": /* uint16 */,
+
+  "ref_hash": {
+    "label": /* string */,
+    "value": /* hex-encoded binary data */,
+    "out": /* hex-encoded binary data */,
+  }
+
+  "expand_with_label": {
+    "secret": /* hex-encoded binary data */,
+    "label": /* string */,
+    "context": /* hex-encoded binary data */,
+    "length": /* uint16 */,
+    "out": /* hex-encoded binary data */,
+  },
+
+  "derive_secret": {
+    "secret": /* hex-encoded binary data */,
+    "label": /* string */,
+    "out": /* hex-encoded binary data */,
+  },
+
+  "derive_tree_secret": {
+    "secret": /* hex-encoded binary data */,
+    "label": /* string */
+    "generation": /* uint16 */
+    "length": /* uint16 */
+    "out": /* hex-encoded binary data */,
+  },
+
+  "sign_with_label": {
+    "priv": /* hex-encoded binary data */,
+    "pub": /* hex-encoded binary data */,
+    "content": /* hex-encoded binary data */,
+    "label": /* string */,
+    "signature": /* string */,
+  },
+
+  "encrypt_with_label": {
+    "priv": /* hex-encoded binary data */,
+    "pub": /* hex-encoded binary data */,
+    "label": /* hex-encoded binary data */,
+    "context": /* hex-encoded binary data */,
+    "plaintext": /* hex-encoded binary data */,
+    "kem_output": /* hex-encoded binary data */,
+    "ciphertext": /* hex-encoded binary data */,
+  }
+}
+```
+
+Verification:
+
+* `ref_hash`: `out == RefHash(label, value)`
+* `expand_with_label`: `out == ExpandWithLabel(secret, label, context, length)`
+* `derive_secret`: `out == DeriveSecret(secret, label)`
+* `derive_tree_secret`: `out == DeriveTreeSecret(secret, label, generation, length)`
+* `sign_with_label`:
+  * `VerifyWithLabel(pub, label, content, signature) == true`
+  * `VerifyWithLabel(pub, label, content, SignWithLabel(priv, label, content)) == true`
+* `encrypt_with_label`:
+  * `DecryptWithLabel(priv, label, context, kem_output, ciphertext) == plaintext`
+  * `kem_output_candidate, ciphertext_candidate = EncryptWithLabel(pub, label, context, plaintext)`
+  * `DecryptWithLabel(priv, label, context, kem_output_candidate, ciphertext_candidate) == plaintext`
+
 
 ## Encryption
 
