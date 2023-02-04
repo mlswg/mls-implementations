@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"google.golang.org/grpc"
@@ -28,14 +29,21 @@ const (
 	ActionExternalJoin         ScriptAction = "externalJoin"
 	ActionPublicGroupState     ScriptAction = "publicGroupState"
 	ActionAddProposal          ScriptAction = "addProposal"
+	ActionUpdateProposal       ScriptAction = "updateProposal"
+	ActionRemoveProposal       ScriptAction = "removeProposal"
 	ActionCommit               ScriptAction = "commit"
 	ActionHandleCommit         ScriptAction = "handleCommit"
+	ActionHandlePendingCommit  ScriptAction = "handlePendingCommit"
 	ActionHandleExternalCommit ScriptAction = "handleExternalCommit"
 	ActionVerifyStateAuth      ScriptAction = "verifyStateAuth"
 	ActionStateProperties      ScriptAction = "stateProperties"
+	ActionProtect              ScriptAction = "protect"
+	ActionUnprotect            ScriptAction = "unprotect"
 
 	ScriptStateProperties = "stateProperties"
 	ActorLeader           = "leader"
+
+	TimeoutSeconds = 120
 )
 
 type ScriptStep struct {
@@ -56,6 +64,10 @@ type AddProposalStepParams struct {
 	KeyPackage int `json:"keyPackage"`
 }
 
+type RemoveProposalStepParams struct {
+	Removed string `json:"removed"`
+}
+
 type CommitStepParams struct {
 	ByReference []int `json:"byReference"`
 	ByValue     []int `json:"byValue"`
@@ -64,6 +76,14 @@ type CommitStepParams struct {
 type HandleCommitStepParams struct {
 	Commit      int   `json:"commit"`
 	ByReference []int `json:"byReference"`
+}
+
+type ProtectStepParams struct {
+	ApplicationData []byte `json:"applicationData"`
+}
+
+type UnprotectStepParams struct {
+	Ciphertext int `json:"ciphertext"`
 }
 
 func (step *ScriptStep) UnmarshalJSON(data []byte) error {
@@ -157,7 +177,7 @@ type Client struct {
 }
 
 func ctx() context.Context {
-	c, _ := context.WithTimeout(context.Background(), time.Second * 10)
+	c, _ := context.WithTimeout(context.Background(), time.Second*TimeoutSeconds)
 	return c
 }
 
@@ -354,6 +374,10 @@ func (config *ScriptActorConfig) GetMessage(index int, key string) ([]byte, erro
 	return message, nil
 }
 
+func (config *ScriptActorConfig) StoreInteger(index int, key string, integer uint32) {
+	config.transcript[index][key] = strconv.FormatUint(uint64(integer), 10)
+}
+
 func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 	switch step.Action {
 	case ActionCreateGroup:
@@ -398,7 +422,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		txID, ok := config.transactionID[step.Actor]
 		if !ok {
-			return fmt.Errorf("Malformed step: No transaction for %d", step.Actor)
+			return fmt.Errorf("Malformed step: No transaction for %s", step.Actor)
 		}
 
 		req := &pb.JoinGroupRequest{
@@ -406,6 +430,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			Welcome:          welcome,
 			EncryptHandshake: config.EncryptHandshake,
 		}
+
 		resp, err := client.rpc.JoinGroup(ctx(), req)
 		if err != nil {
 			return err
@@ -475,6 +500,45 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
+	case ActionRemoveProposal:
+		client := config.ActorClients[step.Actor]
+		var params RemoveProposalStepParams
+		err := json.Unmarshal(step.Raw, &params)
+
+		if err != nil {
+			return err
+		}
+
+		removedStateID := config.stateID[params.Removed]
+
+		req := &pb.RemoveProposalRequest{
+			StateId: config.stateID[step.Actor],
+			Removed: removedStateID,
+		}
+
+		resp, err := client.rpc.RemoveProposal(ctx(), req)
+
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "proposal", resp.Proposal)
+
+	case ActionUpdateProposal:
+		client := config.ActorClients[step.Actor]
+
+		req := &pb.UpdateProposalRequest{
+			StateId: config.stateID[step.Actor],
+		}
+
+		resp, err := client.rpc.UpdateProposal(ctx(), req)
+
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "proposal", resp.Proposal)
+
 	case ActionCommit:
 		client := config.ActorClients[step.Actor]
 		var params CommitStepParams
@@ -512,6 +576,49 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		config.StoreMessage(index, "commit", resp.Commit)
 		config.StoreMessage(index, "welcome", resp.Welcome)
 
+	case ActionProtect:
+		client := config.ActorClients[step.Actor]
+		var params ProtectStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		req := &pb.ProtectRequest{
+			StateId:         config.stateID[step.Actor],
+			ApplicationData: params.ApplicationData,
+		}
+		resp, err := client.rpc.Protect(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "ciphertext", resp.Ciphertext)
+
+	case ActionUnprotect:
+		client := config.ActorClients[step.Actor]
+		var params UnprotectStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		ciphertext, err := config.GetMessage(params.Ciphertext, "ciphertext")
+		if err != nil {
+			return err
+		}
+
+		req := &pb.UnprotectRequest{
+			StateId:    config.stateID[step.Actor],
+			Ciphertext: ciphertext,
+		}
+		resp, err := client.rpc.Unprotect(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "applicationData", resp.ApplicationData)
+
 	case ActionHandleCommit:
 		client := config.ActorClients[step.Actor]
 		var params HandleCommitStepParams
@@ -544,6 +651,55 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		config.stateID[step.Actor] = resp.StateId
+
+		for i, leafIndex := range resp.Added {
+			config.StoreInteger(index, fmt.Sprintf("added %d", i), leafIndex)
+		}
+
+		for i, leafIndex := range resp.Updated {
+			config.StoreInteger(index, fmt.Sprintf("updated %d", i), leafIndex)
+		}
+
+		if len(resp.RemovedIndices) != len(resp.RemovedLeaves) {
+			return fmt.Errorf("Lengths of removed leaves (%d) and indices(%d) do not match.", len(resp.RemovedLeaves), len(resp.RemovedIndices))
+		}
+
+		for i := 0; i < len(resp.RemovedIndices); i++ {
+			config.StoreInteger(index, fmt.Sprintf("removedIndex %d", i), resp.RemovedIndices[i])
+			config.StoreMessage(index, fmt.Sprintf("removedLeaf %d", i), resp.RemovedLeaves[i])
+		}
+
+	case ActionHandlePendingCommit:
+		client := config.ActorClients[step.Actor]
+
+		req := &pb.HandlePendingCommitRequest{
+			StateId: config.stateID[step.Actor],
+		}
+
+		resp, err := client.rpc.HandlePendingCommit(ctx(), req)
+
+		if err != nil {
+			return err
+		}
+
+		config.stateID[step.Actor] = resp.StateId
+
+		for i, leafIndex := range resp.Added {
+			config.StoreInteger(index, fmt.Sprintf("added %d", i), leafIndex)
+		}
+
+		for i, leafIndex := range resp.Updated {
+			config.StoreInteger(index, fmt.Sprintf("updated %d", i), leafIndex)
+		}
+
+		if len(resp.RemovedIndices) != len(resp.RemovedLeaves) {
+			return fmt.Errorf("Lengths of removed leaves (%d) and indices(%d) do not match.", len(resp.RemovedLeaves), len(resp.RemovedIndices))
+		}
+
+		for i := 0; i < len(resp.RemovedIndices); i++ {
+			config.StoreInteger(index, fmt.Sprintf("removedIndex %d", i), resp.RemovedIndices[i])
+			config.StoreMessage(index, fmt.Sprintf("removedLeaf %d", i), resp.RemovedLeaves[i])
+		}
 
 	case ActionHandleExternalCommit:
 		client := config.ActorClients[step.Actor]
