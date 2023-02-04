@@ -1,7 +1,5 @@
 {
   "clients": [
-    "localhost:50001",
-    "localhost:50002",
     "localhost:50003"
   ],
   "test_vectors": [
@@ -13,24 +11,22 @@
     "messages"
   ],
   "scripts": {
-    "two_party": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "createKeyPackage", "actor": "bob"},
-      {"action": "addProposal", "actor": "alice", "keyPackage": 1},
-      {"action": "commit", "actor": "alice", "byReference": [2]},
-      {"action": "joinGroup", "actor": "bob", "welcome": 3},
-      {"action": "handleCommit", "actor": "alice", "byReference": [2], "commit": 3},
-      {"action": "verifyStateAuth"}
-    ],
-    "external_join": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "publicGroupState", "actor": "alice"},
-      {"action": "externalJoin", "actor": "bob", "publicGroupState": 1},
-      {"action": "handleExternalCommit", "actor": "alice", "commit": 2},
-      {"action": "verifyStateAuth"}
-    ],
-    "stateProperties": [
-      {"action": "stateProperties"}
-    ]
+        "two_party": [
+          {"action": "createGroup", "actor": "alice"},
+          {"action": "createKeyPackage", "actor": "bob"},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 1},
+          {"action": "createKeyPackage", "actor": "charlie"},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 3},
+          {"action": "commit", "actor": "alice", "byReference": []},
+          {"action": "joinGroup", "actor": "bob", "welcome": 5},
+          {"action": "joinGroup", "actor": "charlie", "welcome": 5},
+          {"action": "handlePendingCommit", "actor": "alice"},
+          {"action": "removeProposal", "actor": "charlie", "removed": "bob"},
+          {"action": "commit", "actor": "alice", "byReference": [9]},
+          {"action": "handleCommit", "actor": "charlie", "commit": 10},
+          {"action": "handlePendingCommit", "actor": "alice"},
+          {"action": "protect", "actor": "alice", "applicationData": "aGVsbG8="},
+          {"action": "unprotect", "actor": "charlie", "ciphertext": 13}
+        ]
   }
 }

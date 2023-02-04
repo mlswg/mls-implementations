@@ -1,3 +1,7 @@
 .DS_Store
 interop/cpp-mock-client/build/
 go.sum
+interop/rust-mock-client/Cargo.lock
+interop/rust-mock-client/target
+interop/go-mock-client/go-mock-client
+interop/proto/*.go
