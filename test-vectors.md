@@ -33,9 +33,12 @@ the syntax of the messages used for MLS (independent of semantics).
 
 ### Representation
 
-Test vectors are JSON serialized.  `optional<type>` is serialized as the value
-itself or `null` if not present.  MLS structs are binary encoded according to
-spec and represented as hex-encoded strings in JSON.
+* Test vectors are JSON serialized.
+* Each test vector file is an array of objects in the form described here.
+* `optional<type>` is serialized as the value itself or `null` if not present.
+* MLS structs are binary encoded according to spec and represented as
+  hex-encoded strings in JSON.
+
 
 ## Tree Math
 
@@ -45,17 +48,15 @@ Parameters:
 Format:
 
 ```
-[
-  {
-    "n_leaves": /* uint32 */,
-    "n_nodes": /* uint32 */,
-    "root": /* uint32 */,
-    "left": [ /* array of optional<uint32> */ ],
-    "right": [ /* array of optional<uint32> */ ],
-    "parent": [ /* array of optional<uint32> */ ],
-    "sibling": [ /* array of optional<uint32> */ ]
-  }
-]
+{
+  "n_leaves": /* uint32 */,
+  "n_nodes": /* uint32 */,
+  "root": /* uint32 */,
+  "left": [ /* array of optional<uint32> */ ],
+  "right": [ /* array of optional<uint32> */ ],
+  "parent": [ /* array of optional<uint32> */ ],
+  "sibling": [ /* array of optional<uint32> */ ]
+}
 ```
 
 Verification:
