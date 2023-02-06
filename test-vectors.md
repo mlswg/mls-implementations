@@ -387,7 +387,7 @@ Format:
 
   "key_package": /* serialized KeyPackage */,
   "signature_priv":  /* hex-encoded binary data */,
-  "leaf_priv": /* hex-encoded binary data */,
+  "encryption_priv": /* hex-encoded binary data */,
   "init_priv": /* hex-encoded binary data */,
 
   "welcome":  /* serialized MLSMessage (Welcome) */,
@@ -410,7 +410,7 @@ Format:
 Verification:
 
 * Verify that `signature_priv`, `leaf_priv`, and `init_priv` correspond to the
-  public keys in the KeyPackage object described by `key_package`
+  public keys (`signature_key`, `encryption_key`, and `init_key`) in the KeyPackage object described by `key_package`
 * Join the group using the Welcome message described by `welcome`
 * Verify that the locally computed `epoch_authenticator` value is equal to the
   `initial_epoch_authenticator` value
