@@ -129,7 +129,7 @@ Format:
   "encrypt_with_label": {
     "priv": /* hex-encoded binary data */,
     "pub": /* hex-encoded binary data */,
-    "label": /* hex-encoded binary data */,
+    "label": /* string */,
     "context": /* hex-encoded binary data */,
     "plaintext": /* hex-encoded binary data */,
     "kem_output": /* hex-encoded binary data */,
