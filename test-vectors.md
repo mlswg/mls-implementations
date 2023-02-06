@@ -391,7 +391,7 @@ Format:
   "init_priv": /* hex-encoded binary data */,
 
   "welcome":  /* serialized MLSMessage (Welcome) */,
-  "initial_state_authenticator":  /* hex-encoded binary data */,
+  "initial_epoch_authenticator":  /* hex-encoded binary data */,
   
   "epochs": [
     {
@@ -400,7 +400,7 @@ Format:
         /* serialized MLSMessage (PublicMessage or PrivateMessage) */,
       ],
       "commit": /* serialized MLSMessage (PublicMessage or PrivateMessage) */,
-      "state_authenticator": /* hex-encoded binary data */,
+      "epoch_authenticator": /* hex-encoded binary data */,
     },
     // ...
   ]
@@ -412,10 +412,10 @@ Verification:
 * Verify that `signature_priv`, `leaf_priv`, and `init_priv` correspond to the
   public keys in the KeyPackage object described by `key_package`
 * Join the group using the Welcome message described by `welcome`
-* Verify that the locally computed `state_authenticator` value is equal to the
-  `initial_state_authenticator` value
+* Verify that the locally computed `epoch_authenticator` value is equal to the
+  `initial_epoch_authenticator` value
 * For each entry in `epochs`:
   * Apply the Commit from `commit`, using any values from `proposals` that are
     incorporated by reference in the Commit
-  * Verify that the locally computed `state_authenticator` value is equal to the
-    `state_authenticator` value in the epoch object
+  * Verify that the locally computed `epoch_authenticator` value is equal to the
+    `epoch_authenticator` value in the epoch object
