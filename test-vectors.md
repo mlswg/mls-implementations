@@ -156,7 +156,6 @@ Format:
   "commit_priv":  /* serialized MLSMessage(PrivateMessage) */,
 
   "application":  /* hex-encoded binary application data */,
-  "application_pub":  /* serialized MLSMessage(PublicMessage) */,
   "application_priv":  /* serialized MLSMessage(PrivateMessage) */,
 }
 ```
