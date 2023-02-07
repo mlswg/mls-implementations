@@ -145,7 +145,9 @@ Format:
   "signature_pub": /* hex-encoded binary data */,
 
   "encryption_secret": /* hex-encoded binary data */,
+  "sender_data_secret": /* hex-encoded binary data */,
   "membership_key": /* hex-encoded binary data */,
+  "confirmation_tag": /* hex-encoded binary data */,
 
   "proposal":  /* serialized Proposal */,
   "proposal_pub":  /* serialized MLSMessage(PublicMessage) */,
@@ -170,15 +172,19 @@ Verification:
 * For each of `proposal`, `commit` and `application`:
   * Verify that the `pub` message verifies with the provided `membership_key`
     and `signature_pub`, and produces the raw proposal / commit / application
-    data.
+    data
   * Verify that protecting the raw value with the provided `membership_key` and
     `signature_priv` produces a PublicMessage that verifies with `membership_key`
     and `signature_pub`
+    * When protecting the Commit message, add the supplied confirmation tag
+    * For the application message, instead verify that protecting as a
+      PublicMessage fails
   * Verify that the `priv` message successfully unprotects using the secret tree
     constructed above and `signature_pub`
-  * Verify that protecting the raw value with the secret tree and
-    `signature_priv` produces a PrivateMessage that verifies with the secret
-    tree and `signature_pub`
+  * Verify that protecting the raw value with the secret tree,
+    `sender_data_secret`, and `signature_priv` produces a PrivateMessage that
+    unprotects with the secret tree, `sender_data_secret`, and `signature_pub`
+    * When protecting the Commit message, add the supplied confirmation tag
 
 ## Key Schedule
 
