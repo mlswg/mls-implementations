@@ -123,7 +123,7 @@ Format:
   "derive_tree_secret": {
     "secret": /* hex-encoded binary data */,
     "label": /* string */
-    "generation": /* uint16 */
+    "generation": /* uint32 */
     "length": /* uint16 */
     "out": /* hex-encoded binary data */,
   },
