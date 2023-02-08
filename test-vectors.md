@@ -227,7 +227,6 @@ Format:
   "encryption_secret": /* hex-encoded binary data */,
   "sender_data_secret": /* hex-encoded binary data */,
   "membership_key": /* hex-encoded binary data */,
-  "confirmation_tag": /* hex-encoded binary data */,
 
   "proposal":  /* serialized Proposal */,
   "proposal_pub":  /* serialized MLSMessage(PublicMessage) */,
