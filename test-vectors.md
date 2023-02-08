@@ -45,7 +45,7 @@ the syntax of the messages used for MLS (independent of semantics).
   * HPKE private keys are encoded according to the `SerializePrivateKey` function
     for the HPKE method for the ciphersuite
   * ECDSA private keys are encoded using the `Field-Element-to-Octet-String`
-    transofrmation (i.e., big-endian integers, as with HPKE ECDH private keys)
+    transformation (i.e., big-endian integers, as with HPKE ECDH private keys)
   * EdDSA private keys are encoded in their native byte string representation.
 
 
