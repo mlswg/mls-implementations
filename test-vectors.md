@@ -515,31 +515,42 @@ Parameters:
 Format:
 ``` text
 {
-  "key_package": /* serialized KeyPackage */,
-  "capabilities": /* serialized Capabilities */,
-  "lifetime": /* serialized {uint64 not_before; uint64 not_after;} */,
-  "ratchet_tree": /* serialized optional<Node> ratchet_tree<1..2^32-1>; */,
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_welcome */
+  "mls_welcome": "...",
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_group_info */
+  "mls_group_info": "...",
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_key_package */
+  "mls_key_package": "...",
 
-  "group_info": /* serialized GroupInfo */,
-  "group_secrets": /* serialized GroupSecrets */,
-  "welcome": /* serialized Welcome */,
+  /* Serialized optional<Node> ratchet_tree<1..2^32-1>; */
+  "ratchet_tree": "...",
+  /* Serialized GroupSecrets */
+  "group_secrets": "...",
 
-  "public_group_state": /* serialized PublicGroupState */,
+  "add_proposal":                      /* Serialized Add */,
+  "update_proposal":                   /* Serialized Update */,
+  "remove_proposal":                   /* Serialized Remove */,
+  "pre_shared_key_proposal":           /* Serialized PreSharedKey */,
+  "re_init_proposal":                  /* Serialized ReInit */,
+  "external_init_proposal":            /* Serialized ExternalInit */,
+  "group_context_extensions_proposal": /* Serialized GroupContextExtensions */,
 
-  "add_proposal": /* serialized Add */,
-  "update_proposal": /* serialized Update */,
-  "remove_proposal": /* serialized Remove */,
-  "pre_shared_key_proposal": /* serialized PreSharedKey */,
-  "re_init_proposal": /* serialized ReInit */,
-  "external_init_proposal": /* serialized ExternalInit */,
-  "app_ack_proposal": /* serialized AppAck */,
+  "commit": /* Serialized Commit */,
 
-  "commit": /* serialized Commit */,
-
-  "mls_plaintext_application": /* serialized MLSPlaintext(ApplicationData) */,
-  "mls_plaintext_proposal": /* serialized MLSPlaintext(Proposal(*)) */,
-  "mls_plaintext_commit": /* serialized MLSPlaintext(Commit) */,
-  "mls_ciphertext": /* serialized MLSCiphertext */,
+  /* Serialized MLSMessage with
+       MLSMessage.wire_format == mls_public_message and
+       MLSMessage.public_message.content.content_type == application */
+  "public_message_application": "...",
+  /* Serialized MLSMessage with
+       MLSMessage.wire_format == mls_public_message and
+       MLSMessage.public_message.content.content_type == proposal */
+  "public_message_proposal": "...",
+  /* Serialized MLSMessage with
+       MLSMessage.wire_format == mls_public_message and
+       MLSMessage.public_message.content.content_type == commit */
+  "public_message_commit": "...",
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_private_message */
+  "private_message": "...",
 }
 ```
 
