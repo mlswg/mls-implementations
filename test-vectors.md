@@ -287,17 +287,9 @@ Format:
 
   "epochs": [
     {
-      epoch: /* uint64 */,
       // Chosen by the generator
       "tree_hash": /* hex-encoded binary data */,
       "commit_secret": /* hex-encoded binary data */,
-      "psks": [
-        {
-          psk: /* hex-encoded binary data */,
-          psk_id: /* hex encoded PreSharedKeyID */
-        },
-        ...
-      ],
       "confirmed_transcript_hash": /* hex-encoded binary data */,
       
       // Computed values
@@ -317,7 +309,12 @@ Format:
       "resumption_secret": /* hex-encoded binary data */,
 
       // A TLS-serialized HPKEPublicKey object
-      "external_pub": /* hex-encoded binary data */
+      "external_pub": /* hex-encoded binary data */,
+      "exporter": {
+        "exporter_label": /* string */,
+        "exporter_length": /* uint32 */,
+        "exported": /* hex-encoded binary data */
+      }
     },
     ...
   ]
@@ -333,7 +330,7 @@ Verification:
   * Construct a GroupContext with the following contents:
     * `cipher_suite` as specified
     * `group_id` as specified
-    * `epoch` as specified
+    * `epoch = i`
     * `tree_hash` as specified
     * `confirmed_transcript_hash` as specified
     * `extensions = {}`
@@ -341,9 +338,10 @@ Verification:
   * Verify that the key schedule outputs are as specified given the following
     inputs:
     * `init_key` from the prior epoch or `joiner_secret`
-    * `commit_secret` and `psk_secret` as specified
-      * The `psk_secret` is computed from the `psks` [as defined in the specification](https://github.com/mlswg/mls-protocol/blob/main/draft-ietf-mls-protocol.md#pre-shared-keys)
+    * `commit_secret` as specified and no `psk`
     * `GroupContext_[n]` as computed above
+  * Verify the `external_pub` is the public key output from `KEM.DeriveKeyPair(external_secret)`
+  * Verify the `exporter.exported` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter_label`, `exporter_length`, and GroupContext.
 
 ## Commits and Transcript Hashes
 
