@@ -155,82 +155,119 @@ Verification:
   * `kem_output_candidate, ciphertext_candidate = EncryptWithLabel(pub, label, context, plaintext)`
   * `DecryptWithLabel(priv, label, context, kem_output_candidate, ciphertext_candidate) == plaintext`
 
-
-## Encryption
+## Secret Tree
 
 Parameters:
 * Ciphersuite
 * Number of leaves
-* Number of generations
+* Set of generations
 
 Format:
 
 ```text
 {
   "cipher_suite": /* uint16 */,
-  "n_leaves": /* uint32 */,
-  "encryption_secret": /* hex-encoded binary data */,
-  "sender_data_secret": /* hex-encoded binary data */,
 
-  "sender_data_info": {
+  "sender_data": {
+    "sender_data_secret": /* hex-encoded binary data */,
     "ciphertext": /* hex-encoded binary data */,
     "key": /* hex-encoded binary data */,
     "nonce": /* hex-encoded binary data */,
   },
+
+  "encryption_secret": /* hex-encoded binary data */,
   "leaves": [
-    {
-      "handshake": [ /* array with `generations` handshake keys and nonces */
-        {
-          "generation": /* uint32 */,
-          "key": /* hex-encoded binary data */,
-          "nonce": /* hex-encoded binary data */,
-          "plaintext": /* hex-encoded binary data */
-          "ciphertext": /* hex-encoded binary data */
-        },
-        ...
-      ],
-      "application": [ /* array with `generations` application keys and nonces */
-        {
-          "generation": /* uint32 */,
-          "key": /* hex-encoded binary data */,
-          "nonce": /* hex-encoded binary data */,
-          "plaintext": /* hex-encoded binary data */
-          "ciphertext": /* hex-encoded binary data */
-        },
-        ...
-      ]
-    }
+    [
+      {
+        "generation": /* uint32 */
+        "handshake_key": /* hex-encoded binary data */,
+        "handshake_nonce": /* hex-encoded binary data */,
+        "application_key": /* hex-encoded binary data */,
+        "application_nonce": /* hex-encoded binary data */,
+      },
+      ...
+    ],
+    ...
   ]
 }
 ```
 
 Verification:
 
-For all `N` entries in the `leaves`
-* `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[leaves[N].generation]`
-* `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[leaves[N].generation]`
-* `leaves[N].handshake[j].plaintext` represents a PublicMessage containing a
-  handshake message (Proposal or Commit) from leaf `N`
-* `leaves[N].handshake[j].ciphertext` represents a PrivateMessage object that
-  successfully decrypts to an MLSPlaintext equivalent to
-  `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
-  `leaves[N].generation`.
-* `leaves[N].application[j].key = application_ratchet_key_[2*N]_[leaves[N].generation]`
-* `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[leaves[N].generation]`
-* `leaves[N].application[j].plaintext` represents a MLSPlaintext containing
-  application data from leaf `N`
-* `leaves[N].application[j].ciphertext` represents a PrivateMessage object that
-  successfully decrypts to an MLSPlaintext equivalent to
-  `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and generation
-  `leaves[N].generation`.
-* `sender_data_info.secret.key = sender_data_key(sender_data_secret, sender_data_info.ciphertext)`
-* `sender_data_info.secret.nonce = sender_data_nonce(sender_data_secret, sender_data_info.ciphertext)`
+* `sender_data`:
+  * `key == sender_data_key(sender_data_secret, ciphertext)`
+  * `nonce == sender_data_nonce(sender_data_secret, ciphertext)`
+* Initialize a secret tree with a number of leaves equal to the number of
+  entries in the `leaves` array, with `encryption_secret` as the root secret
+* For each entry in `leaves`:
+  * For each entry in the array `leaves[i]`, verify that:
+    * `handshake_key = handshake_ratchet_key_[i]_[generation]`
+    * `handshake_nonce = handshake_ratchet_nonce_[i]_[generation]`
+    * `application_key = application_ratchet_key_[i]_[generation]`
+    * `application_nonce = application_ratchet_nonce_[i]_[generation]`
 
-The extra factor of 2 in `2*N` ensures that only chains rooted at leaf nodes are
-tested.  The definitions of `ratchet_key` and `ratchet_nonce` are in the
-[Encryption
-Keys](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys)
-section of the specification.
+The index `i` into the hash ratchets represents the leaf node with leaf index `i`. 
+
+## Message Protection
+
+Parameters:
+* Ciphersuite
+
+Format:
+
+``` text
+{
+  "cipher_suite": /* uint16 */,
+
+  "group_id": /* hex-encoded binary data */,
+  "epoch": /* uint64 */,
+  "tree_hash": /* hex-encoded binary data */,
+  "confirmed_transcript_hash": /* hex-encoded binary data */,
+
+  "signature_priv": /* hex-encoded binary data */,
+  "signature_pub": /* hex-encoded binary data */,
+
+  "encryption_secret": /* hex-encoded binary data */,
+  "sender_data_secret": /* hex-encoded binary data */,
+  "membership_key": /* hex-encoded binary data */,
+
+  "proposal":  /* serialized Proposal */,
+  "proposal_pub":  /* serialized MLSMessage(PublicMessage) */,
+  "proposal_priv":  /* serialized MLSMessage(PrivateMessage) */,
+
+  "commit":  /* serialized Commit */,
+  "commit_pub":  /* serialized MLSMessage(PublicMessage) */,
+  "commit_priv":  /* serialized MLSMessage(PrivateMessage) */,
+
+  "application":  /* hex-encoded binary application data */,
+  "application_priv":  /* serialized MLSMessage(PrivateMessage) */,
+}
+```
+
+Verification:
+
+* Construct a GroupContext object with the provided `cipher_suite`, `group_id`,
+  `epoch`, `tree_hash`, and `confirmed_transcript_hash` values, and empty
+  `extensions`
+* Initialize a secret tree for 2 members with the specified
+  `encryption_secret`
+* For each of `proposal`, `commit` and `application`:
+  * In all of these tests, use the member with LeafIndex 1 as the sender
+  * Verify that the `pub` message verifies with the provided `membership_key`
+    and `signature_pub`, and produces the raw proposal / commit / application
+    data
+  * Verify that protecting the raw value with the provided `membership_key` and
+    `signature_priv` produces a PublicMessage that verifies with `membership_key`
+    and `signature_pub`
+    * When protecting the Commit message, add the supplied confirmation tag
+    * For the application message, instead verify that protecting as a
+      PublicMessage fails
+  * Verify that the `priv` message successfully unprotects using the secret tree
+    constructed above and `signature_pub`
+  * Verify that protecting the raw value with the secret tree,
+    `sender_data_secret`, and `signature_priv` produces a PrivateMessage that
+    unprotects with the secret tree, `sender_data_secret`, and `signature_pub`
+    * When protecting the Commit message, add the supplied confirmation tag
 
 ## Key Schedule
 
