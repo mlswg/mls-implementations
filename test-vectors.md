@@ -409,7 +409,7 @@ Parameters:
 * (none)
 
 Format:
-```
+``` text
 {
   "key_package": /* serialized KeyPackage */,
   "capabilities": /* serialized Capabilities */,
@@ -449,3 +449,55 @@ Verification:
 The specific contents of the objects are chosen by the creator of the test
 vectors.  The objects produced must be syntactically valid. The optional MAC
 values may be invalid but should be populated.
+
+## Passive Client Scenarios
+
+This section describes a class of test vectors that verify that a client can
+"follow along" with group operations (rather than a single test vector).  A test
+vector as described in this section represents a scenario in which a client is
+added to a group with a Welcome, and verifies that the client can follow along
+as the group evolves.
+
+Parameters:
+* Ciphersuite
+* Operations to be performed on the group
+
+Format:
+``` text
+{
+  "cipher_suite": /* uint16 */,
+
+  "key_package": /* serialized KeyPackage */,
+  "signature_priv":  /* hex-encoded binary data */,
+  "encryption_priv": /* hex-encoded binary data */,
+  "init_priv": /* hex-encoded binary data */,
+
+  "welcome":  /* serialized MLSMessage (Welcome) */,
+  "initial_epoch_authenticator":  /* hex-encoded binary data */,
+  
+  "epochs": [
+    {
+      "proposals": [
+        /* serialized MLSMessage (PublicMessage or PrivateMessage) */,
+        /* serialized MLSMessage (PublicMessage or PrivateMessage) */,
+      ],
+      "commit": /* serialized MLSMessage (PublicMessage or PrivateMessage) */,
+      "epoch_authenticator": /* hex-encoded binary data */,
+    },
+    // ...
+  ]
+}
+```
+
+Verification:
+
+* Verify that `signature_priv`, `leaf_priv`, and `init_priv` correspond to the
+  public keys (`signature_key`, `encryption_key`, and `init_key`) in the KeyPackage object described by `key_package`
+* Join the group using the Welcome message described by `welcome`
+* Verify that the locally computed `epoch_authenticator` value is equal to the
+  `initial_epoch_authenticator` value
+* For each entry in `epochs`:
+  * Apply the Commit from `commit`, using any values from `proposals` that are
+    incorporated by reference in the Commit
+  * Verify that the locally computed `epoch_authenticator` value is equal to the
+    `epoch_authenticator` value in the epoch object
