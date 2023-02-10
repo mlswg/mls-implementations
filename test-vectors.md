@@ -249,9 +249,9 @@ Verification:
 * Construct a GroupContext object with the provided `cipher_suite`, `group_id`,
   `epoch`, `tree_hash`, and `confirmed_transcript_hash` values, and empty
   `extensions`
-* Initialize a secret tree for 2 members with the specified
-  `encryption_secret`
 * For each of `proposal`, `commit` and `application`:
+  * Initialize a secret tree for 2 members with the specified
+  `encryption_secret`
   * In all of these tests, use the member with LeafIndex 1 as the sender
   * Verify that the `pub` message verifies with the provided `membership_key`
     and `signature_pub`, and produces the raw proposal / commit / application
