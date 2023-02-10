@@ -343,6 +343,41 @@ Verification:
   * Verify the `external_pub` is the public key output from `KEM.DeriveKeyPair(external_secret)`
   * Verify the `exporter.exported` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter_label`, `exporter_length`, and GroupContext.
 
+## PreShared Keys
+
+Parameters:
+* Ciphersuite
+* Number of PreSharedKeys
+
+Format:
+
+```text
+{
+  "cipher_suite": /* uint16 */,
+
+  // Chosen by the generator
+  "psks": [
+    {
+      "psk_id": /* hex-encoded binary data */,
+      "psk": /* hex-encoded binary data */,
+      "psk_nonce": /* hex-encoded binary data */,
+    },
+    ...
+  ],
+
+  // Computed values
+  "psk_secret": /* hex-encoded binary data */,
+}
+```
+
+Verification:
+* For each PreSharedKey in `psks`, compute `PreSharedKeyID` with external
+  `PSKType` and with provided `psk_id` and `psk_nonce`
+* Use the computed `PreSharedKeyID` values and provided `psk` values to
+  compute the `psk_secret` as described in
+  [the specification](https://datatracker.ietf.org/doc/html/draft-ietf-mls-protocol-17#name-pre-shared-keys)
+  and verify that it matches the provided `psk_secret`
+
 ## Commits and Transcript Hashes
 
 Parameters:
