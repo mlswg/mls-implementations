@@ -343,7 +343,7 @@ Verification:
   * Verify the `external_pub` is the public key output from `KEM.DeriveKeyPair(external_secret)`
   * Verify the `exporter.exported` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter_label`, `exporter_length`, and GroupContext.
 
-## PreShared Keys
+## Pre-Shared Keys
 
 Parameters:
 * Ciphersuite
@@ -423,6 +423,38 @@ Verification:
   * `tree_hash = tree_hash_before`
   * `confirmed_transcript_hash = confirmed_transcript_hash_before`
   * `extensions = {}`
+
+## Welcome
+
+Parameters:
+* Ciphersuite
+
+Format:
+
+```text
+{
+  "cipher_suite": /* uint16 */,
+
+  // Chosen by the generator
+  "init_priv": /* hex-encoded serialized HPKE private key */,
+  "signer_pub": /* hex-encoded serialized signature public key */,
+
+  "key_package": /* hex-encoded serialized KeyPackage */,
+  "welcome": /* hex-encoded serialized Welcome */,
+}
+```
+
+Verification:
+* Decrypt the Welcome message:
+  * Identify the entry in `welcome.secrets` corresponding to `key_package`
+  * Decrypt the encrypted group secrets using `init_priv`
+  * Decrypt the encrypted group info
+* Verify the signature on the decrypted group info using `signer_pub`
+* Verify the `confirmation_tag` in the decrypted group info:
+  * Initialize a key schedule epoch using the decrypted `joiner_secret` and no PSKs
+  * Recompute a candidate `confirmation_tag` value using the `confirmation_key`
+    from the key schedule epoch and the `confirmed_transcript_hash` from the
+    decrypted GroupContext
 
 ## TreeKEM
 
