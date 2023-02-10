@@ -38,14 +38,17 @@ the syntax of the messages used for MLS (independent of semantics).
 * `optional<type>` is serialized as the value itself or `null` if not present.
 * MLS structs are binary encoded according to spec and represented as
   hex-encoded strings in JSON.
-* HPKE public keys and signature public keys are encoded in the formats
-  described in the MLS specification.
-* HPKE private keys are encoded according to the `SerializePrivateKey` function
-  for the HPKE method for the ciphersuite.
-* Signature private keys are encoded similarly:
+* HPKE and Signature public keys are encoded in the formats specified for
+  HPKEPublicKey and SignaturePublicKey in the MLS specification, but as raw
+  binary data, without the length prefix used in encoding those structs
+* HPKE and Signature private keys are encoded as binary objects in the following
+  formats:
+  * HPKE private keys are encoded according to the `SerializePrivateKey` function
+    for the HPKE method for the ciphersuite
   * ECDSA private keys are encoded using the `Field-Element-to-Octet-String`
-    transofrmation (i.e., as big-endian integers)
+    transformation (i.e., big-endian integers, as with HPKE ECDH private keys)
   * EdDSA private keys are encoded in their native byte string representation.
+
 
 ## Tree Math
 
@@ -113,7 +116,7 @@ Format:
   "derive_tree_secret": {
     "secret": /* hex-encoded binary data */,
     "label": /* string */
-    "generation": /* uint16 */
+    "generation": /* uint32 */
     "length": /* uint16 */
     "out": /* hex-encoded binary data */,
   },
