@@ -308,12 +308,11 @@ Format:
       "membership_key": /* hex-encoded binary data */,
       "resumption_secret": /* hex-encoded binary data */,
 
-      // A TLS-serialized HPKEPublicKey object
       "external_pub": /* hex-encoded binary data */,
       "exporter": {
-        "exporter_label": /* string */,
-        "exporter_length": /* uint32 */,
-        "exported": /* hex-encoded binary data */
+        "label": /* string */,
+        "length": /* uint32 */,
+        "secret": /* hex-encoded binary data */
       }
     },
     ...
@@ -341,7 +340,7 @@ Verification:
     * `commit_secret` as specified and no `psk`
     * `GroupContext_[n]` as computed above
   * Verify the `external_pub` is the public key output from `KEM.DeriveKeyPair(external_secret)`
-  * Verify the `exporter.exported` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter_label`, `exporter_length`, and GroupContext.
+  * Verify the `exporter.secret` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter.label`, `exporter.length`, and GroupContext.
 
 ## Pre-Shared Keys
 
