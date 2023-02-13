@@ -439,8 +439,8 @@ Format:
   "init_priv": /* hex-encoded serialized HPKE private key */,
   "signer_pub": /* hex-encoded serialized signature public key */,
 
-  "key_package": /* hex-encoded serialized KeyPackage */,
-  "welcome": /* hex-encoded serialized Welcome */,
+  "key_package": /* hex-encoded serialized MLSMessage(KeyPackage) */,
+  "welcome": /* hex-encoded serialized MLSMessage(Welcome) */,
 }
 ```
 
