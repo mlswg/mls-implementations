@@ -507,6 +507,12 @@ Verification:
   * Compute the ratchet tree that results from merging `leaves[i].update_path`
     into `ratchet_tree`, and verify that its root tree hash is equal to
     `leaves[i].tree_hash_after`
+  * Create a new UpdatePath `new_update_path` using `ratchet_tree` and
+    `leaves[i].signature_priv` and note the resulting commit secret
+    `new_commit_secret`
+  * For each leaf node index `j != i`:
+    * Process `new_update_path` using `private_leaf[j]`
+    * Verify that the resulting commit secret is `new_commit_secret`
 
 ## Messages
 
