@@ -462,50 +462,51 @@ Parameters:
 * Number of leaves in the test tree
 
 Format:
-```text
+
+``` text
 {
   "cipher_suite": /* uint16 */,
 
-  // Chosen by the generator
-  "ratchet_tree_before": /* hex-encoded binary data */,
-  
-  "add_sender": /* uint32 */,
-  "my_leaf_secret": /* hex-encoded binary data */,
-  "my_key_package": /* hex-encoded binary data */,
-  "my_path_secret": /* hex-encoded binary data */,
+  "ratchet_tree": /* hex-encoded optional<Node> ratchet_tree<1..2^32-1> */,
+  "hpke_private_keys": [
+    /* hex-encoded HPKE private key for non-blank nodes, null for blank nodes */,
+  ],
+  "signature_keys": [
+    /* hex-encoded signatrure private key for each leaf node */,
+  ],
 
-  "update_sender": /* uint32 */,
-  "update_path": /* hex-encoded binary data */,
-  "update_group_context": /* hex-encoded binary data */,
+  "leaves": [
+    {
+      "hpke_private_keys": [ /* uint32 indices into the hpke_private_keys array above */
+      "signature_priv": /* hex-encoded signatrure private key for each leaf node */,
+      "update_path": /* hex-encoded UpdatePath */,
+      "path_secrets": [
+        /* hex-encoded binary data, null for j == i */
+        ...
+      ],
+      "commit_secret": /* hex-encoded binary data */
+      "tree_hash_after": /* hex-encoded binary data */
+    }
+    ...
+  ],'
 
-  // Computed values
-  "tree_hash_before": /* hex-encoded binary data */,
-  "root_secret_after_add": /* hex-encoded binary data */
-  "root_secret_after_update": /* hex-encoded binary data */
-  "ratchet_tree_after": /* hex-encoded binary data */,
-  "tree_hash_after": /* hex-encoded binary data */
 }
 ```
 
-Some of the binary fields contain TLS-serialized objects:
-* `ratchet_tree_before` and `ratchet_tree_after` contain serialized ratchet
-  trees, as in [the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
-* `my_key_package` contains a KeyPackage object
-* `update_path` contains an UpdatePath object
-* The exclusion list in the update path is empty.
-
 Verification:
-* Verify that the tree hash of `tree_before` equals `tree_hash_before`
-* Verify that the tree hash of `tree_after` equals `tree_hash_after`
-* Verify that both `tree_before` and `tree_after` have valid parent hashes
-* Identify the test participant's location in the tree using `my_key_package`
-* Initialize the private state of the tree by setting `my_path_secret` at the
-  common ancestor between the test participant's leaf and `add_sender`
-  and `my_leaf_secret` for the leaf
-* Verify that the root secret for the initial tree matches `root_secret_after_add`
-* Process the `update_path` to get a new root secret and update the tree
-* Verify that the new root root secret matches `root_secret_after_update`
-* Verify that the tree now matches `tree_after`
+* For each leaf node index `i`, initialize private TreeKEM state
+  `private_leaf[i]` with the HPKE private keys referenced in
+  `leaves[i].hpke_private_keys`.
+* For each leaf node index `i`:
+  * Verify that `leaves[i].update_path` is parent-hash valid relative to
+    `ratchet_tree`
+  * For each leaf node index `j != i`:
+    * Process `leaves[i].update_path` using `private_leaf[j]`
+    * Verify that `leaves[i].path_secrets[j]` is the decrypted path secret
+    * Verify that `leaves[i].commit_secret` is the resulting commit secret
+  * Compute the ratchet tree that results from merging `leaves[i].update_path`
+    into `ratchet_tree`, and verify that its root tree hash is equal to
+    `leaves[i].tree_hash_after`
 
 ## Messages
 
