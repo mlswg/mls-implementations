@@ -126,7 +126,7 @@ Format:
     "pub": /* hex-encoded binary data */,
     "content": /* hex-encoded binary data */,
     "label": /* string */,
-    "signature": /* string */,
+    "signature": /* hex-encoded binary data */,
   },
 
   "encrypt_with_label": {
