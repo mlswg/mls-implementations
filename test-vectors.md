@@ -455,6 +455,45 @@ Verification:
     from the key schedule epoch and the `confirmed_transcript_hash` from the
     decrypted GroupContext
 
+## Parent Hash and Tree Hash
+
+Parameters:
+* Ciphersuite
+
+Format:
+```text
+{
+  "cipher_suite": /* uint16 */,
+
+  "tree": /* hex-encoded binary data */,
+  "tree_hashes": [
+    /* hex-encoded binary data */
+  ...
+  ]
+}
+```
+
+`tree` contains a TLS-serialized ratchet tree, as in
+[the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
+
+Verification:
+* Verify the parent hashes of `tree` as when joining the group /* todo ref */
+* For each node in `tree` with index `i`, compute the node's tree hash and
+  verify that the result matches `tree_hashes[i]`. /* todo ref */
+
+# Origins of Test Trees
+/* todo clean up this text and add pictures */
+`get_tree(n_leaves)` generates a tree by starting with a single node, then having leaf 0 commit adding leaf 1, leaf 1 commit adding 2, etc, until there are `n_leaves`.
+
+* easy case : `get_tree(2)`, `get_tree(8)`
+* blanks at the end : `get_tree(7)`
+* blanks but no skipping : `get_tree(8)`, 0 commits removing 2 and 3 and adding a new member
+* blanks with skipping : `get_tree(8)`, 0 commits removing 1, 2 and 3
+* blanks with skipping at the end : `get_tree(9)`
+* unmerged without blanks : `get_tree(7)`, 0 commits adding a member
+* unmerged with blanks : fig. 20 of the RFC
+* (not sure about this one) big tree : `get_tree(33)`
+
 ## TreeKEM
 
 Parameters:
