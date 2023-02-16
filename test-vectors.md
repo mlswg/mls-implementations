@@ -312,6 +312,7 @@ Format:
       "external_pub": /* hex-encoded binary data */,
       "exporter": {
         "label": /* string */,
+        "context: /* hex-encoded binary data*/,
         "length": /* uint32 */,
         "secret": /* hex-encoded binary data */
       }
@@ -341,7 +342,7 @@ Verification:
     * `commit_secret` as specified and `psk_secret` (if present)
     * `GroupContext_[n]` as computed above
   * Verify the `external_pub` is the public key output from `KEM.DeriveKeyPair(external_secret)`
-  * Verify the `exporter.secret` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter.label`, `exporter.length`, and GroupContext.
+  * Verify the `exporter.secret` is the value output from `MLS-Exporter(exporter.label, exporter.context, exporter.length)`
 
 ## Pre-Shared Keys
 
