@@ -459,7 +459,7 @@ Verification:
 
 Parameters:
 * Ciphersuite
-* Number of leaves in the test tree
+* Test tree structure
 
 Format:
 
@@ -467,18 +467,29 @@ Format:
 {
   "cipher_suite": /* uint16 */,
 
+  "group_id": /* hex encoded binary data */,
+  "epoch": /* uint64 */,
+  "confirmed_transcript_hash": /* hex encoded binary data */,
+
   "ratchet_tree": /* hex-encoded optional<Node> ratchet_tree<1..2^32-1> */,
-  "hpke_private_keys": [
-    /* hex-encoded HPKE private key for non-blank nodes, null for blank nodes */,
-  ],
-  "signature_keys": [
-    /* hex-encoded signatrure private key for each leaf node */,
+
+  "leaves_private": [
+    {
+      "encryption_priv": /* hex-encoded HPKE private key for the leaf node */,
+      "signature_priv": /* hex-encoded signatrure private key for the leaf node */,
+      "path_secrets": [
+        {
+          "sender": /* uint32 leaf index of the sender of the UpdatePath */,
+          "path_secret": /* hex encoded binary path secret */
+        }
+        ...
+      ]
+    }
+    ...
   ],
 
-  "leaves": [
+  "paths": [
     {
-      "hpke_private_keys": [ /* uint32 indices into the hpke_private_keys array above */
-      "signature_priv": /* hex-encoded signatrure private key for each leaf node */,
       "update_path": /* hex-encoded UpdatePath */,
       "path_secrets": [
         /* hex-encoded binary data, null for j == i */
@@ -494,22 +505,38 @@ Format:
 ```
 
 Verification:
+* Verify that each leaf in the tree is validly signed, using the `group_id` for
+  any leaves with `leaf_node_source` set to `update` or `commit`.
+* Verify that the ratchet tree is parent-hash valid
 * For each leaf node index `i`, initialize private TreeKEM state
-  `private_leaf[i]` with the HPKE private keys referenced in
-  `leaves[i].hpke_private_keys`.
-* For each leaf node index `i`:
-  * Verify that `leaves[i].update_path` is parent-hash valid relative to
+  `leaf_private[i]` from the data in `leaves_private[i]` in the
+  following way:
+  * Associate `encryption_priv` and `signature_priv` with the leaf node
+  * For each entry in `path_secrets`:
+    * Identify the common ancestor between leaf `i` and `sender`
+    * Set the private values at the common ancestor node based on `path_secret`
+    * Derive private values from `path_secret` for the ancestors of the common
+      ancestor node, up to the root of the tree
+  * Verify that the resulting private state `leaf_private[i]` is consistent with
+    the `ratchet_tree`, in the sense that for every node in the private state,
+    the corresponding node in the tree is (a) not blank and (b) contains the
+    public key corresponding to the private key in the private state.
+* Construct a GroupContext object using the provided `cipher_suite`, `group_id`,
+  `epoch`, and `confirmed_transcript_hash`, and the root tree hash of
+  `ratchet_tree
+* For each entry `paths[i]`:
+  * Verify that `paths[i].update_path` is parent-hash valid relative to
     `ratchet_tree`
   * For each leaf node index `j != i`:
     * Process `leaves[i].update_path` using `private_leaf[j]`
-    * Verify that `leaves[i].path_secrets[j]` is the decrypted path secret
-    * Verify that `leaves[i].commit_secret` is the resulting commit secret
+    * Verify that `paths[i].path_secrets[j]` is the decrypted path secret
+    * Verify that `paths[i].commit_secret` is the resulting commit secret
   * Compute the ratchet tree that results from merging `leaves[i].update_path`
     into `ratchet_tree`, and verify that its root tree hash is equal to
     `leaves[i].tree_hash_after`
-  * Create a new UpdatePath `new_update_path` using `ratchet_tree` and
-    `leaves[i].signature_priv` and note the resulting commit secret
-    `new_commit_secret`
+  * Create a new UpdatePath `new_update_path`, using `ratchet_tree`,
+    `leaves[i].signature_priv`, and the GroupContext computed above.  Note the
+    resulting commit secret `new_commit_secret`
   * For each leaf node index `j != i`:
     * Process `new_update_path` using `private_leaf[j]`
     * Verify that the resulting commit secret is `new_commit_secret`
