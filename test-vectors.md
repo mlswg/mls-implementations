@@ -283,13 +283,14 @@ Format:
   
   // Chosen by the generator
   "group_id": /* hex-encoded binary data */,
-  "joiner_secret": /* hex-encoded binary data */,
+  "initial_init_secret": /* hex-encoded binary data */,
 
   "epochs": [
     {
       // Chosen by the generator
       "tree_hash": /* hex-encoded binary data */,
       "commit_secret": /* hex-encoded binary data */,
+      "psk_secret": /* null, or hex-encoded binary data */,
       "confirmed_transcript_hash": /* hex-encoded binary data */,
       
       // Computed values
@@ -302,11 +303,11 @@ Format:
       "sender_data_secret": /* hex-encoded binary data */,
       "encryption_secret": /* hex-encoded binary data */,
       "exporter_secret": /* hex-encoded binary data */,
-      "authentication_secret": /* hex-encoded binary data */,
+      "epoch_authenticator": /* hex-encoded binary data */,
       "external_secret": /* hex-encoded binary data */,
       "confirmation_key": /* hex-encoded binary data */,
       "membership_key": /* hex-encoded binary data */,
-      "resumption_secret": /* hex-encoded binary data */,
+      "resumption_psk": /* hex-encoded binary data */,
 
       "external_pub": /* hex-encoded binary data */,
       "exporter": {
@@ -323,7 +324,7 @@ Format:
 Verification:
 * Initialize the first key schedule epoch for the group [as defined in the
   specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation),
-  using `group_id`, `initial_tree_hash`, and `joiner_secret` for the
+  using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the
   non-constant values.
 * For epoch `epoch[i]`:
   * Construct a GroupContext with the following contents:
@@ -336,8 +337,8 @@ Verification:
   * Verify that group context matches the provided `group_context` value
   * Verify that the key schedule outputs are as specified given the following
     inputs:
-    * `init_key` from the prior epoch or `joiner_secret`
-    * `commit_secret` as specified and no `psk`
+    * `init_key` from the prior epoch or `initial_init_secret`
+    * `commit_secret` as specified and `psk_secret` (if present)
     * `GroupContext_[n]` as computed above
   * Verify the `external_pub` is the public key output from `KEM.DeriveKeyPair(external_secret)`
   * Verify the `exporter.secret` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter.label`, `exporter.length`, and GroupContext.
