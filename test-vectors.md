@@ -389,29 +389,36 @@ Format:
 {
   "cipher_suite": /* uint16 */,
 
-  // Chosen by the generator
+  /* Chosen by the generator */
   "group_id": /* hex-encoded binary data */,
   "epoch": /* uint64 */,
   "tree_hash_before": /* hex-encoded binary data */,
   "confirmed_transcript_hash_before": /* hex-encoded binary data */,
-  "interim_transcript_hash_before": /* hex-encoded binary data */,
-
-  "membership_key": /* hex-encoded binary data */,
   "confirmation_key": /* hex-encoded binary data */,
-  "commit": /* hex-encoded TLS-serialized MlsMessage(PublicMessage) */
+  "wire_format": /* uint16 */,
+  "authenticated_data": /* hex-encoded binary data */
+  "commit": /* hex-encoded TLS-serialized Commit */
+  "sender": /* hex-encoded TLS-serialized Sender */
+  "signature": /* hex-encoded binary data */
   
+  /* checks of intermediate structs */
+  "group_context": /* hex-encoded TLS serialized GroupContext */,
+  "confirmed_transcript_hash_input": /* hex-encoded TLS serialized ConfirmedTranscriptHashInput */,
+
   // Computed values
-  "group_context": /* hex-encoded binary data */,
+  "interim_transcript_hash": /* hex-encoded binary data */,
   "confirmed_transcript_hash_after": /* hex-encoded binary data */,
-  "interim_transcript_hash_after": /* hex-encoded binary data */,
 }
 ```
 
 Verification:
-* Verify that `confirmed_transcript_hash_after` and
-  `interim_transcript_hash_after` are the result of updating
-  `interim_transcript_hash_before` with `commit`
 * Verify that group context matches the provided `group_context` value
+* Verify that confirmed transcript hash input matches the provided
+  `confirmed_transcript_hash_input` value.
+  The confirmed transcript hash input is built from the provided `group_id`,
+  `epoch`, `sender`, `authenticated_data`, `commit`, `wire_format`, and `signature`.
+* Verify that `confirmed_transcript_hash_after` and `interim_transcript_hash`
+  are the result of updating `confirmed_transcript_hash_before` with `commit`
 
 ## Welcome
 
