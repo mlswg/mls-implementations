@@ -520,7 +520,7 @@ Verification:
     public key corresponding to the private key in the private state.
 * Construct a GroupContext object using the provided `cipher_suite`, `group_id`,
   `epoch`, and `confirmed_transcript_hash`, and the root tree hash of
-  `ratchet_tree
+  `ratchet_tree`
 * For each entry in `update_paths`:
   * Verify that `update_path` is parent-hash valid relative to
     `ratchet_tree`
