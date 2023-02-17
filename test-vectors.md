@@ -290,7 +290,7 @@ Format:
       // Chosen by the generator
       "tree_hash": /* hex-encoded binary data */,
       "commit_secret": /* hex-encoded binary data */,
-      "psk_secret": /* null, or hex-encoded binary data */,
+      "psk_secret": /* hex-encoded binary data */,
       "confirmed_transcript_hash": /* hex-encoded binary data */,
       
       // Computed values
@@ -326,7 +326,7 @@ Verification:
 * Initialize the first key schedule epoch for the group [as defined in the
   specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation),
   using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the
-  non-constant values.
+  non-constant values. Note that `psk_secret` can sometimes be the all zero vector.
 * For epoch `epoch[i]`:
   * Construct a GroupContext with the following contents:
     * `cipher_suite` as specified
