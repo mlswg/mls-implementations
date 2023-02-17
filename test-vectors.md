@@ -325,7 +325,7 @@ Verification:
 * Initialize the first key schedule epoch for the group [as defined in the
   specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation),
   using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the
-  non-constant values. Note that `psk_secret` can sometimes be the all null vector.
+  non-constant values. Note that `psk_secret` can sometimes be the all zero vector.
 * For epoch `epoch[i]`:
   * Construct a GroupContext with the following contents:
     * `cipher_suite` as specified
