@@ -455,7 +455,7 @@ Verification:
     from the key schedule epoch and the `confirmed_transcript_hash` from the
     decrypted GroupContext
 
-## Parent Hash and Tree Hash
+## Tree Validation
 
 Parameters:
 * Ciphersuite
@@ -465,34 +465,58 @@ Format:
 {
   "cipher_suite": /* uint16 */,
 
+  // Chosen by the generator
   "tree": /* hex-encoded binary data */,
+  "group_id": /* hex-encoded binary data */,
+
+  // Computed values
+  "resolutions": [
+    [uint32, ...],
+  ...
+  ],
+
   "tree_hashes": [
-    /* hex-encoded binary data */
+    /* hex-encoded binary data */,
   ...
   ]
 }
 ```
 
 `tree` contains a TLS-serialized ratchet tree, as in
-[the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
+[the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-12.4.3.3)
 
 Verification:
-* Verify the parent hashes of `tree` as when joining the group /* todo ref */
-* For each node in `tree` with index `i`, compute the node's tree hash and
-  verify that the result matches `tree_hashes[i]`. /* todo ref */
+* Verify that the resolution of each node in tree with node index `i` matches
+  `resolutions[i]`.
+* Verify that the tree hash of each node in tree with node index `i` matches
+  `tree_hashes[i]`.
+* [Verify the parent hashes](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-7.9.2)
+  of `tree` as when joining the group.
+* Verify the signatures on all leaves of `tree` using the provided `group_id`
+  as context.
 
-# Origins of Test Trees
-/* todo clean up this text and add pictures */
-`get_tree(n_leaves)` generates a tree by starting with a single node, then having leaf 0 commit adding leaf 1, leaf 1 commit adding 2, etc, until there are `n_leaves`.
+### Origins of Test Trees
+Trees in the test vector are ordered according to increasing complexity. Let
+`get_tree(n)` denote the tree generated as follows: Initialize a tree
+with a single node. For `i=0` to `n - 1`, leaf with leaf index `i`
+commits adding a member (with leaf index `i + 1`).
 
-* easy case : `get_tree(2)`, `get_tree(8)`
-* blanks at the end : `get_tree(7)`
-* blanks but no skipping : `get_tree(8)`, 0 commits removing 2 and 3 and adding a new member
-* blanks with skipping : `get_tree(8)`, 0 commits removing 1, 2 and 3
-* blanks with skipping at the end : `get_tree(9)`
-* unmerged without blanks : `get_tree(7)`, 0 commits adding a member
-* unmerged with blanks : fig. 20 of the RFC
-* (not sure about this one) big tree : `get_tree(33)`
+Note that the following tests cover `get_tree(n)` for all `n` in
+`[2, 3, ..., 9, 32, 33, 34]`.
+
+* Full trees: `get_tree(n)` for `n` in `[2, 4, 8, 32]`.
+* A tree with internal blanks: start with `get_tree(8)`; then the leaf with
+  index `0` commits removing leaves `2` and `3`, and adding new member.
+* Trees with trailing blanks: `get_tree(n)` for `n` in `[3, 5, 7, 33]`.
+* A tree with internal blanks and skipping blanks in the parent hash links:
+  start with `get_tree(8)`; then the leaf with index `0` commits removing
+  leaves `1`, `2` and `3`.
+* Trees with skipping trailing blanks in the parent hash links:
+  `get_tree(n)` for `n` in `[3, 34]`.
+* A tree with unmerged leaves: start with `get_tree(7)`, then the leaf
+  with index `0` adds a member.
+* A tree with unmerged leaves and skipping blanks in the parent hash links:
+  the tree from [Figure 20](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#appendix-A).
 
 ## TreeKEM
 
