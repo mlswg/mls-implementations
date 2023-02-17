@@ -489,7 +489,7 @@ Format:
     ...
   ],
 
-  "paths": [
+  "update_paths": [
     {
       "sender": /* uint32 leaf index */,
       "update_path": /* hex-encoded UpdatePath */,
