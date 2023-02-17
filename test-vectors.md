@@ -507,9 +507,6 @@ Format:
 ```
 
 Verification:
-* Verify that each leaf in the tree is validly signed, using the `group_id` for
-  any leaves with `leaf_node_source` set to `update` or `commit`.
-* Verify that the ratchet tree is parent-hash valid
 * For each entry in `leaves_private`, initialize a private TreeKEM state
   `leaf_private[index]` in the following way:
   * Associate `encryption_priv` and `signature_priv` with the leaf node
