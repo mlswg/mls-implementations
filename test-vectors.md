@@ -475,11 +475,12 @@ Format:
 
   "leaves_private": [
     {
+      "index": /* uint32 leaf index */,
       "encryption_priv": /* hex-encoded HPKE private key for the leaf node */,
       "signature_priv": /* hex-encoded signatrure private key for the leaf node */,
       "path_secrets": [
         {
-          "sender": /* uint32 leaf index of the sender of the UpdatePath */,
+          "node": /* uint32 node index (in the array representation of the tree) */,
           "path_secret": /* hex encoded binary path secret */
         }
         ...
@@ -490,6 +491,7 @@ Format:
 
   "paths": [
     {
+      "sender": /* uint32 leaf index */,
       "update_path": /* hex-encoded UpdatePath */,
       "path_secrets": [
         /* hex-encoded binary data, null for j == i */
@@ -508,15 +510,13 @@ Verification:
 * Verify that each leaf in the tree is validly signed, using the `group_id` for
   any leaves with `leaf_node_source` set to `update` or `commit`.
 * Verify that the ratchet tree is parent-hash valid
-* For each leaf node index `i`, initialize private TreeKEM state
-  `leaf_private[i]` from the data in `leaves_private[i]` in the
-  following way:
+* For each entry in `leaves_private`, initialize a private TreeKEM state
+  `leaf_private[index]` in the following way:
   * Associate `encryption_priv` and `signature_priv` with the leaf node
   * For each entry in `path_secrets`:
-    * Identify the common ancestor between leaf `i` and `sender`
-    * Set the private values at the common ancestor node based on `path_secret`
-    * Derive private values from `path_secret` for the ancestors of the common
-      ancestor node, up to the root of the tree
+    * Identify the node in the tree with node index `node` in the array
+      representation of the tree
+    * Set the private value at this node based on `path_secret`
   * Verify that the resulting private state `leaf_private[i]` is consistent with
     the `ratchet_tree`, in the sense that for every node in the private state,
     the corresponding node in the tree is (a) not blank and (b) contains the
@@ -524,20 +524,20 @@ Verification:
 * Construct a GroupContext object using the provided `cipher_suite`, `group_id`,
   `epoch`, and `confirmed_transcript_hash`, and the root tree hash of
   `ratchet_tree
-* For each entry `paths[i]`:
-  * Verify that `paths[i].update_path` is parent-hash valid relative to
+* For each entry in `update_paths`:
+  * Verify that `update_path` is parent-hash valid relative to
     `ratchet_tree`
-  * For each leaf node index `j != i`:
-    * Process `leaves[i].update_path` using `private_leaf[j]`
-    * Verify that `paths[i].path_secrets[j]` is the decrypted path secret
-    * Verify that `paths[i].commit_secret` is the resulting commit secret
-  * Compute the ratchet tree that results from merging `leaves[i].update_path`
+  * For each leaf node index `j != i` for which the leaf node is not blank:
+    * Process `update_path` using `private_leaf[j]`
+    * Verify that `path_secrets[j]` is the decrypted path secret
+    * Verify that `commit_secret` is the resulting commit secret
+  * Compute the ratchet tree that results from merging `update_path`
     into `ratchet_tree`, and verify that its root tree hash is equal to
-    `leaves[i].tree_hash_after`
+    `.tree_hash_after`
   * Create a new UpdatePath `new_update_path`, using `ratchet_tree`,
     `leaves[i].signature_priv`, and the GroupContext computed above.  Note the
     resulting commit secret `new_commit_secret`
-  * For each leaf node index `j != i`:
+  * For each leaf node index `j != i` for which the leaf node is not blank:
     * Process `new_update_path` using `private_leaf[j]`
     * Verify that the resulting commit secret is `new_commit_secret`
 
