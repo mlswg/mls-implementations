@@ -471,7 +471,7 @@ Format:
   "epoch": /* uint64 */,
   "confirmed_transcript_hash": /* hex encoded binary data */,
 
-  "ratchet_tree": /* hex-encoded optional<Node> ratchet_tree<1..2^32-1> */,
+  "ratchet_tree": /* hex-encoded optional<Node> ratchet_tree<V> */,
 
   "leaves_private": [
     {
@@ -552,7 +552,7 @@ Format:
   "key_package": /* serialized KeyPackage */,
   "capabilities": /* serialized Capabilities */,
   "lifetime": /* serialized {uint64 not_before; uint64 not_after;} */,
-  "ratchet_tree": /* serialized optional<Node> ratchet_tree<1..2^32-1>; */,
+  "ratchet_tree": /* serialized optional<Node> ratchet_tree<V>; */,
 
   "group_info": /* serialized GroupInfo */,
   "group_secrets": /* serialized GroupSecrets */,
