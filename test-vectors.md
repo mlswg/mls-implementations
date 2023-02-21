@@ -475,7 +475,7 @@ Format:
 The type of `proposal` is either `add`, `remove` or `update`. 
 
 Verification:
-* Compute `candidate_tree_after` byt applying `proposal` sent by the member
+* Compute `candidate_tree_after` by applying `proposal` sent by the member
   with index `proposal_sender` to `tree_before`.
 * Verify that serialized `candidate_tree_after` matches the provided `tree_after`
   value.
