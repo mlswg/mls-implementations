@@ -506,6 +506,13 @@ Format:
 }
 ```
 
+When creating or processing an UpdatePath, the GroupContext object used as
+context should have the following values:
+
+* `cipher_suite`, `group_id`, `epoch`, and `confirmed_transcript_hash` as provided
+* `tree_hash` reflecting `ratchet_tree` as updated by the UpdatePath
+* Empty `extensions`
+
 Verification:
 * For each entry in `leaves_private`, initialize a private TreeKEM state
   `leaf_private[index]` in the following way:
