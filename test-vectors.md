@@ -126,7 +126,7 @@ Format:
     "pub": /* hex-encoded binary data */,
     "content": /* hex-encoded binary data */,
     "label": /* string */,
-    "signature": /* string */,
+    "signature": /* hex-encoded binary data */,
   },
 
   "encrypt_with_label": {
@@ -283,13 +283,14 @@ Format:
   
   // Chosen by the generator
   "group_id": /* hex-encoded binary data */,
-  "joiner_secret": /* hex-encoded binary data */,
+  "initial_init_secret": /* hex-encoded binary data */,
 
   "epochs": [
     {
       // Chosen by the generator
       "tree_hash": /* hex-encoded binary data */,
       "commit_secret": /* hex-encoded binary data */,
+      "psk_secret": /* hex-encoded binary data */,
       "confirmed_transcript_hash": /* hex-encoded binary data */,
       
       // Computed values
@@ -302,15 +303,16 @@ Format:
       "sender_data_secret": /* hex-encoded binary data */,
       "encryption_secret": /* hex-encoded binary data */,
       "exporter_secret": /* hex-encoded binary data */,
-      "authentication_secret": /* hex-encoded binary data */,
+      "epoch_authenticator": /* hex-encoded binary data */,
       "external_secret": /* hex-encoded binary data */,
       "confirmation_key": /* hex-encoded binary data */,
       "membership_key": /* hex-encoded binary data */,
-      "resumption_secret": /* hex-encoded binary data */,
+      "resumption_psk": /* hex-encoded binary data */,
 
       "external_pub": /* hex-encoded binary data */,
       "exporter": {
         "label": /* string */,
+        "context: /* hex-encoded binary data*/,
         "length": /* uint32 */,
         "secret": /* hex-encoded binary data */
       }
@@ -323,8 +325,8 @@ Format:
 Verification:
 * Initialize the first key schedule epoch for the group [as defined in the
   specification](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#group-creation),
-  using `group_id`, `initial_tree_hash`, and `joiner_secret` for the
-  non-constant values.
+  using `group_id`, `initial_tree_hash`, and `initial_init_secret` for the
+  non-constant values. Note that `psk_secret` can sometimes be the all zero vector.
 * For epoch `epoch[i]`:
   * Construct a GroupContext with the following contents:
     * `cipher_suite` as specified
@@ -336,11 +338,11 @@ Verification:
   * Verify that group context matches the provided `group_context` value
   * Verify that the key schedule outputs are as specified given the following
     inputs:
-    * `init_key` from the prior epoch or `joiner_secret`
-    * `commit_secret` as specified and no `psk`
+    * `init_key` from the prior epoch or `initial_init_secret`
+    * `commit_secret` as specified and `psk_secret` (if present)
     * `GroupContext_[n]` as computed above
   * Verify the `external_pub` is the public key output from `KEM.DeriveKeyPair(external_secret)`
-  * Verify the `exporter.secret` is the key output from `MLS-Exporter(Label, Context, Length)` with the `exporter.label`, `exporter.length`, and GroupContext.
+  * Verify the `exporter.secret` is the value output from `MLS-Exporter(exporter.label, exporter.context, exporter.length)`
 
 ## Pre-Shared Keys
 
@@ -455,6 +457,69 @@ Verification:
     from the key schedule epoch and the `confirmed_transcript_hash` from the
     decrypted GroupContext
 
+## Tree Validation
+
+Parameters:
+* Ciphersuite
+
+Format:
+```text
+{
+  "cipher_suite": /* uint16 */,
+
+  // Chosen by the generator
+  "tree": /* hex-encoded binary data */,
+  "group_id": /* hex-encoded binary data */,
+
+  // Computed values
+  "resolutions": [
+    [uint32, ...],
+  ...
+  ],
+
+  "tree_hashes": [
+    /* hex-encoded binary data */,
+  ...
+  ]
+}
+```
+
+`tree` contains a TLS-serialized ratchet tree, as in
+[the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-12.4.3.3)
+
+Verification:
+* Verify that the resolution of each node in tree with node index `i` matches
+  `resolutions[i]`.
+* Verify that the tree hash of each node in tree with node index `i` matches
+  `tree_hashes[i]`.
+* [Verify the parent hashes](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-7.9.2)
+  of `tree` as when joining the group.
+* Verify the signatures on all leaves of `tree` using the provided `group_id`
+  as context.
+
+### Origins of Test Trees
+Trees in the test vector are ordered according to increasing complexity. Let
+`get_tree(n)` denote the tree generated as follows: Initialize a tree
+with a single node. For `i=0` to `n - 1`, leaf with leaf index `i`
+commits adding a member (with leaf index `i + 1`).
+
+Note that the following tests cover `get_tree(n)` for all `n` in
+`[2, 3, ..., 9, 32, 33, 34]`.
+
+* Full trees: `get_tree(n)` for `n` in `[2, 4, 8, 32]`.
+* A tree with internal blanks: start with `get_tree(8)`; then the leaf with
+  index `0` commits removing leaves `2` and `3`, and adding new member.
+* Trees with trailing blanks: `get_tree(n)` for `n` in `[3, 5, 7, 33]`.
+* A tree with internal blanks and skipping blanks in the parent hash links:
+  start with `get_tree(8)`; then the leaf with index `0` commits removing
+  leaves `1`, `2` and `3`.
+* Trees with skipping trailing blanks in the parent hash links:
+  `get_tree(n)` for `n` in `[3, 34]`.
+* A tree with unmerged leaves: start with `get_tree(7)`, then the leaf
+  with index `0` adds a member.
+* A tree with unmerged leaves and skipping blanks in the parent hash links:
+  the tree from [Figure 20](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#appendix-A).
+
 ## TreeKEM
 
 Parameters:
@@ -553,31 +618,42 @@ Parameters:
 Format:
 ``` text
 {
-  "key_package": /* serialized KeyPackage */,
-  "capabilities": /* serialized Capabilities */,
-  "lifetime": /* serialized {uint64 not_before; uint64 not_after;} */,
-  "ratchet_tree": /* serialized optional<Node> ratchet_tree<V>; */,
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_welcome */
+  "mls_welcome": "...",
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_group_info */
+  "mls_group_info": "...",
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_key_package */
+  "mls_key_package": "...",
 
-  "group_info": /* serialized GroupInfo */,
-  "group_secrets": /* serialized GroupSecrets */,
-  "welcome": /* serialized Welcome */,
+  /* Serialized optional<Node> ratchet_tree<1..2^32-1>; */
+  "ratchet_tree": "...",
+  /* Serialized GroupSecrets */
+  "group_secrets": "...",
 
-  "public_group_state": /* serialized PublicGroupState */,
+  "add_proposal":                      /* Serialized Add */,
+  "update_proposal":                   /* Serialized Update */,
+  "remove_proposal":                   /* Serialized Remove */,
+  "pre_shared_key_proposal":           /* Serialized PreSharedKey */,
+  "re_init_proposal":                  /* Serialized ReInit */,
+  "external_init_proposal":            /* Serialized ExternalInit */,
+  "group_context_extensions_proposal": /* Serialized GroupContextExtensions */,
 
-  "add_proposal": /* serialized Add */,
-  "update_proposal": /* serialized Update */,
-  "remove_proposal": /* serialized Remove */,
-  "pre_shared_key_proposal": /* serialized PreSharedKey */,
-  "re_init_proposal": /* serialized ReInit */,
-  "external_init_proposal": /* serialized ExternalInit */,
-  "app_ack_proposal": /* serialized AppAck */,
+  "commit": /* Serialized Commit */,
 
-  "commit": /* serialized Commit */,
-
-  "mls_plaintext_application": /* serialized MLSPlaintext(ApplicationData) */,
-  "mls_plaintext_proposal": /* serialized MLSPlaintext(Proposal(*)) */,
-  "mls_plaintext_commit": /* serialized MLSPlaintext(Commit) */,
-  "mls_ciphertext": /* serialized MLSCiphertext */,
+  /* Serialized MLSMessage with
+       MLSMessage.wire_format == mls_public_message and
+       MLSMessage.public_message.content.content_type == application */
+  "public_message_application": "...",
+  /* Serialized MLSMessage with
+       MLSMessage.wire_format == mls_public_message and
+       MLSMessage.public_message.content.content_type == proposal */
+  "public_message_proposal": "...",
+  /* Serialized MLSMessage with
+       MLSMessage.wire_format == mls_public_message and
+       MLSMessage.public_message.content.content_type == commit */
+  "public_message_commit": "...",
+  /* Serialized MLSMessage with MLSMessage.wire_format == mls_private_message */
+  "private_message": "...",
 }
 ```
 
