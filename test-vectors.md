@@ -379,7 +379,7 @@ Verification:
   [the specification](https://datatracker.ietf.org/doc/html/draft-ietf-mls-protocol-17#name-pre-shared-keys)
   and verify that it matches the provided `psk_secret`
 
-## Commits and Transcript Hashes
+## Transcript Hashes
 
 Parameters:
 * Ciphersuite
@@ -388,42 +388,29 @@ Format:
 
 ```text
 {
-  "cipher_suite": /* uint16 */,
-
-  // Chosen by the generator
-  "group_id": /* hex-encoded binary data */,
-  "epoch": /* uint64 */,
-  "tree_hash_before": /* hex-encoded binary data */,
-  "confirmed_transcript_hash_before": /* hex-encoded binary data */,
-  "interim_transcript_hash_before": /* hex-encoded binary data */,
-  "credential": /* hex-encoded binary data */,
-
-  "membership_key": /* hex-encoded binary data */,
+  "cipher_suite": 1,
   "confirmation_key": /* hex-encoded binary data */,
-  "commit": /* hex-encoded TLS-serialized MLSPlaintext(Commit) */
-  
-  // Computed values
-  "group_context": /* hex-encoded binary data */,
+  "interim_transcript_hash_before": /* hex-encoded binary data */,
+
+  "message": /* hex-encoded serialized MLSMessage(PublicMessage(Commit)) */,
+
   "confirmed_transcript_hash_after": /* hex-encoded binary data */,
-  "interim_transcript_hash_after": /* hex-encoded binary data */,
-}
+  "interim_transcript_hash_after": /* hex-encoded binary data */
+},
 ```
 
 Verification:
-* Verify that `confirmed_transcript_hash_after` and
-  `interim_transcript_hash_after` are the result of updating
-  `interim_transcript_hash_before` with `commit`
-* Verify that group context matches the provided `group_context` value
-* Verify that `commit.confirmation_tag` is present and verifies using
-  `confirmed_transcript_hash_after` and `confirmation_key`
-* Verify that the commit has a valid signature using the `credential`
-* Verify that `commit.membership_tag` is present and verifies using
-  `membership_key` and a GroupContext object with the following contents:
-  * `group_id = group_id`
-  * `epoch = epoch`
-  * `tree_hash = tree_hash_before`
-  * `confirmed_transcript_hash = confirmed_transcript_hash_before`
-  * `extensions = {}`
+* Verify that `message` contains a PublicMessage whose content is a Commit
+* Compute a `confirmed_transcript_hash` value from
+  `interim_transcript_hash_before` and a `ConfirmedTranscriptHashInput` derived
+  from `message`. Verify that this value is equal to
+  `confirmed_transcript_hash_after`
+* Compute a `confirmation_tag` value using the `confirmed_transcript_hash` value
+  and the provided `confirmation_key`.  Verify that this value is equal to the
+  `confirmation_tag` field in `message`.
+* Compute an `interim_transcript_hash` value from `confirmed_transcript_hash`
+  and an `InterimTranscriptHashInput` derived from `message`.  Verify that this
+  value is equal to `interim_transcript_hash_after`.
 
 ## Welcome
 
