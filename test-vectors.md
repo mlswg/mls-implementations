@@ -457,6 +457,29 @@ Verification:
     from the key schedule epoch and the `confirmed_transcript_hash` from the
     decrypted GroupContext
 
+## Tree Operations
+
+Format:
+```text
+{
+  // Chosen by the generator
+  "tree_before": /* hex-encoded TLS-serialized ratchet tree */,
+  "proposal": /* hex-encoded TLS-serialized Proposal */,
+  "proposal_sender": /* uint32 */,
+
+  // Computed values
+  "tree_after": /* hex-encoded TLS-serialized ratchet tree */,
+}
+```
+
+The type of `proposal` is either `add`, `remove` or `update`. 
+
+Verification:
+* Compute `candidate_tree_after` byt applying `proposal` sent by the member
+  with index `proposal_sender` to `tree_before`.
+* Verify that serialized `candidate_tree_after` matches the provided `tree_after`
+  value.
+
 ## TreeKEM
 
 Parameters:
