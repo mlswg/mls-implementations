@@ -480,6 +480,69 @@ Verification:
 * Verify that serialized `candidate_tree_after` matches the provided `tree_after`
   value.
 
+## Tree Validation
+
+Parameters:
+* Ciphersuite
+
+Format:
+```text
+{
+  "cipher_suite": /* uint16 */,
+
+  // Chosen by the generator
+  "tree": /* hex-encoded binary data */,
+  "group_id": /* hex-encoded binary data */,
+
+  // Computed values
+  "resolutions": [
+    [uint32, ...],
+  ...
+  ],
+
+  "tree_hashes": [
+    /* hex-encoded binary data */,
+  ...
+  ]
+}
+```
+
+`tree` contains a TLS-serialized ratchet tree, as in
+[the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-12.4.3.3)
+
+Verification:
+* Verify that the resolution of each node in tree with node index `i` matches
+  `resolutions[i]`.
+* Verify that the tree hash of each node in tree with node index `i` matches
+  `tree_hashes[i]`.
+* [Verify the parent hashes](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-7.9.2)
+  of `tree` as when joining the group.
+* Verify the signatures on all leaves of `tree` using the provided `group_id`
+  as context.
+
+### Origins of Test Trees
+Trees in the test vector are ordered according to increasing complexity. Let
+`get_tree(n)` denote the tree generated as follows: Initialize a tree
+with a single node. For `i=0` to `n - 1`, leaf with leaf index `i`
+commits adding a member (with leaf index `i + 1`).
+
+Note that the following tests cover `get_tree(n)` for all `n` in
+`[2, 3, ..., 9, 32, 33, 34]`.
+
+* Full trees: `get_tree(n)` for `n` in `[2, 4, 8, 32]`.
+* A tree with internal blanks: start with `get_tree(8)`; then the leaf with
+  index `0` commits removing leaves `2` and `3`, and adding new member.
+* Trees with trailing blanks: `get_tree(n)` for `n` in `[3, 5, 7, 33]`.
+* A tree with internal blanks and skipping blanks in the parent hash links:
+  start with `get_tree(8)`; then the leaf with index `0` commits removing
+  leaves `1`, `2` and `3`.
+* Trees with skipping trailing blanks in the parent hash links:
+  `get_tree(n)` for `n` in `[3, 34]`.
+* A tree with unmerged leaves: start with `get_tree(7)`, then the leaf
+  with index `0` adds a member.
+* A tree with unmerged leaves and skipping blanks in the parent hash links:
+  the tree from [Figure 20](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#appendix-A).
+
 ## TreeKEM
 
 Parameters:
