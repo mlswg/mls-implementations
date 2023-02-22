@@ -439,11 +439,33 @@ Verification:
     from the key schedule epoch and the `confirmed_transcript_hash` from the
     decrypted GroupContext
 
-## TreeKEM
+## Tree Operations
+
+Format:
+```text
+{
+  // Chosen by the generator
+  "tree_before": /* hex-encoded TLS-serialized ratchet tree */,
+  "proposal": /* hex-encoded TLS-serialized Proposal */,
+  "proposal_sender": /* uint32 */,
+
+  // Computed values
+  "tree_after": /* hex-encoded TLS-serialized ratchet tree */,
+}
+```
+
+The type of `proposal` is either `add`, `remove` or `update`. 
+
+Verification:
+* Compute `candidate_tree_after` by applying `proposal` sent by the member
+  with index `proposal_sender` to `tree_before`.
+* Verify that serialized `candidate_tree_after` matches the provided `tree_after`
+  value.
+
+## Tree Validation
 
 Parameters:
 * Ciphersuite
-* Number of leaves in the test tree
 
 Format:
 ```text
@@ -451,45 +473,147 @@ Format:
   "cipher_suite": /* uint16 */,
 
   // Chosen by the generator
-  "ratchet_tree_before": /* hex-encoded binary data */,
-  
-  "add_sender": /* uint32 */,
-  "my_leaf_secret": /* hex-encoded binary data */,
-  "my_key_package": /* hex-encoded binary data */,
-  "my_path_secret": /* hex-encoded binary data */,
-
-  "update_sender": /* uint32 */,
-  "update_path": /* hex-encoded binary data */,
-  "update_group_context": /* hex-encoded binary data */,
+  "tree": /* hex-encoded binary data */,
+  "group_id": /* hex-encoded binary data */,
 
   // Computed values
-  "tree_hash_before": /* hex-encoded binary data */,
-  "root_secret_after_add": /* hex-encoded binary data */
-  "root_secret_after_update": /* hex-encoded binary data */
-  "ratchet_tree_after": /* hex-encoded binary data */,
-  "tree_hash_after": /* hex-encoded binary data */
+  "resolutions": [
+    [uint32, ...],
+  ...
+  ],
+
+  "tree_hashes": [
+    /* hex-encoded binary data */,
+  ...
+  ]
 }
 ```
 
-Some of the binary fields contain TLS-serialized objects:
-* `ratchet_tree_before` and `ratchet_tree_after` contain serialized ratchet
-  trees, as in [the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
-* `my_key_package` contains a KeyPackage object
-* `update_path` contains an UpdatePath object
-* The exclusion list in the update path is empty.
+`tree` contains a TLS-serialized ratchet tree, as in
+[the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-12.4.3.3)
 
 Verification:
-* Verify that the tree hash of `tree_before` equals `tree_hash_before`
-* Verify that the tree hash of `tree_after` equals `tree_hash_after`
-* Verify that both `tree_before` and `tree_after` have valid parent hashes
-* Identify the test participant's location in the tree using `my_key_package`
-* Initialize the private state of the tree by setting `my_path_secret` at the
-  common ancestor between the test participant's leaf and `add_sender`
-  and `my_leaf_secret` for the leaf
-* Verify that the root secret for the initial tree matches `root_secret_after_add`
-* Process the `update_path` to get a new root secret and update the tree
-* Verify that the new root root secret matches `root_secret_after_update`
-* Verify that the tree now matches `tree_after`
+* Verify that the resolution of each node in tree with node index `i` matches
+  `resolutions[i]`.
+* Verify that the tree hash of each node in tree with node index `i` matches
+  `tree_hashes[i]`.
+* [Verify the parent hashes](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#section-7.9.2)
+  of `tree` as when joining the group.
+* Verify the signatures on all leaves of `tree` using the provided `group_id`
+  as context.
+
+### Origins of Test Trees
+Trees in the test vector are ordered according to increasing complexity. Let
+`get_tree(n)` denote the tree generated as follows: Initialize a tree
+with a single node. For `i=0` to `n - 1`, leaf with leaf index `i`
+commits adding a member (with leaf index `i + 1`).
+
+Note that the following tests cover `get_tree(n)` for all `n` in
+`[2, 3, ..., 9, 32, 33, 34]`.
+
+* Full trees: `get_tree(n)` for `n` in `[2, 4, 8, 32]`.
+* A tree with internal blanks: start with `get_tree(8)`; then the leaf with
+  index `0` commits removing leaves `2` and `3`, and adding new member.
+* Trees with trailing blanks: `get_tree(n)` for `n` in `[3, 5, 7, 33]`.
+* A tree with internal blanks and skipping blanks in the parent hash links:
+  start with `get_tree(8)`; then the leaf with index `0` commits removing
+  leaves `1`, `2` and `3`.
+* Trees with skipping trailing blanks in the parent hash links:
+  `get_tree(n)` for `n` in `[3, 34]`.
+* A tree with unmerged leaves: start with `get_tree(7)`, then the leaf
+  with index `0` adds a member.
+* A tree with unmerged leaves and skipping blanks in the parent hash links:
+  the tree from [Figure 20](https://tools.ietf.org/html/draft-ietf-mls-protocol-17#appendix-A).
+
+## TreeKEM
+
+Parameters:
+* Ciphersuite
+* Test tree structure
+
+Format:
+
+``` text
+{
+  "cipher_suite": /* uint16 */,
+
+  "group_id": /* hex encoded binary data */,
+  "epoch": /* uint64 */,
+  "confirmed_transcript_hash": /* hex encoded binary data */,
+
+  "ratchet_tree": /* hex-encoded optional<Node> ratchet_tree<V> */,
+
+  "leaves_private": [
+    {
+      "index": /* uint32 leaf index */,
+      "encryption_priv": /* hex-encoded HPKE private key for the leaf node */,
+      "signature_priv": /* hex-encoded signatrure private key for the leaf node */,
+      "path_secrets": [
+        {
+          "node": /* uint32 node index (in the array representation of the tree) */,
+          "path_secret": /* hex encoded binary path secret */
+        }
+        ...
+      ]
+    }
+    ...
+  ],
+
+  "update_paths": [
+    {
+      "sender": /* uint32 leaf index */,
+      "update_path": /* hex-encoded UpdatePath */,
+      "path_secrets": [
+        /* hex-encoded binary data, null for j == i */
+        ...
+      ],
+      "commit_secret": /* hex-encoded binary data */
+      "tree_hash_after": /* hex-encoded binary data */
+    }
+    ...
+  ],'
+
+}
+```
+
+When creating or processing an UpdatePath, the GroupContext object used as
+context should have the following values:
+
+* `cipher_suite`, `group_id`, `epoch`, and `confirmed_transcript_hash` as provided
+* `tree_hash` reflecting `ratchet_tree` as updated by the UpdatePath
+* Empty `extensions`
+
+Verification:
+* For each entry in `leaves_private`, initialize a private TreeKEM state
+  `leaf_private[index]` in the following way:
+  * Associate `encryption_priv` and `signature_priv` with the leaf node
+  * For each entry in `path_secrets`:
+    * Identify the node in the tree with node index `node` in the array
+      representation of the tree
+    * Set the private value at this node based on `path_secret`
+  * Verify that the resulting private state `leaf_private[i]` is consistent with
+    the `ratchet_tree`, in the sense that for every node in the private state,
+    the corresponding node in the tree is (a) not blank and (b) contains the
+    public key corresponding to the private key in the private state.
+* Construct a GroupContext object using the provided `cipher_suite`, `group_id`,
+  `epoch`, and `confirmed_transcript_hash`, and the root tree hash of
+  `ratchet_tree`
+* For each entry in `update_paths`:
+  * Verify that `update_path` is parent-hash valid relative to
+    `ratchet_tree`
+  * For each leaf node index `j != i` for which the leaf node is not blank:
+    * Process `update_path` using `private_leaf[j]`
+    * Verify that `path_secrets[j]` is the decrypted path secret
+    * Verify that `commit_secret` is the resulting commit secret
+  * Compute the ratchet tree that results from merging `update_path`
+    into `ratchet_tree`, and verify that its root tree hash is equal to
+    `.tree_hash_after`
+  * Create a new UpdatePath `new_update_path`, using `ratchet_tree`,
+    `leaves[i].signature_priv`, and the GroupContext computed above.  Note the
+    resulting commit secret `new_commit_secret`
+  * For each leaf node index `j != i` for which the leaf node is not blank:
+    * Process `new_update_path` using `private_leaf[j]`
+    * Verify that the resulting commit secret is `new_commit_secret`
 
 ## Messages
 
