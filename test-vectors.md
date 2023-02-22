@@ -391,13 +391,13 @@ Format:
   "cipher_suite": /* uint16 */,
 
   /* Chosen by the generator */
-  "confirmed_transcript_hash_before": /* hex-encoded binary data */,
   "confirmation_key": /* hex-encoded binary data */,
   "authenticated_content": /* hex-encoded TLS serialized AuthenticatedContent */,
-
+  "interim_transcript_hash_before": /* hex-encoded binary data */,
+  
   /* Computed values */
-  "interim_transcript_hash": /* hex-encoded binary data */,
   "confirmed_transcript_hash_after": /* hex-encoded binary data */,
+  "interim_transcript_hash_after": /* hex-encoded binary data */,
 }
 ```
 
