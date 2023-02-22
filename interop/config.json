@@ -2,14 +2,6 @@
   "clients": [
     "localhost:50003"
   ],
-  "test_vectors": [
-    "tree_math",
-    "encryption",
-    "key_schedule",
-    "transcript",
-    "treekem",
-    "messages"
-  ],
   "scripts": {
         "two_party": [
           {"action": "createGroup", "actor": "alice"},
