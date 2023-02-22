@@ -547,53 +547,91 @@ Note that the following tests cover `get_tree(n)` for all `n` in
 
 Parameters:
 * Ciphersuite
-* Number of leaves in the test tree
+* Test tree structure
 
 Format:
-```text
+
+``` text
 {
   "cipher_suite": /* uint16 */,
 
-  // Chosen by the generator
-  "ratchet_tree_before": /* hex-encoded binary data */,
-  
-  "add_sender": /* uint32 */,
-  "my_leaf_secret": /* hex-encoded binary data */,
-  "my_key_package": /* hex-encoded binary data */,
-  "my_path_secret": /* hex-encoded binary data */,
+  "group_id": /* hex encoded binary data */,
+  "epoch": /* uint64 */,
+  "confirmed_transcript_hash": /* hex encoded binary data */,
 
-  "update_sender": /* uint32 */,
-  "update_path": /* hex-encoded binary data */,
-  "update_group_context": /* hex-encoded binary data */,
+  "ratchet_tree": /* hex-encoded optional<Node> ratchet_tree<V> */,
 
-  // Computed values
-  "tree_hash_before": /* hex-encoded binary data */,
-  "root_secret_after_add": /* hex-encoded binary data */
-  "root_secret_after_update": /* hex-encoded binary data */
-  "ratchet_tree_after": /* hex-encoded binary data */,
-  "tree_hash_after": /* hex-encoded binary data */
+  "leaves_private": [
+    {
+      "index": /* uint32 leaf index */,
+      "encryption_priv": /* hex-encoded HPKE private key for the leaf node */,
+      "signature_priv": /* hex-encoded signatrure private key for the leaf node */,
+      "path_secrets": [
+        {
+          "node": /* uint32 node index (in the array representation of the tree) */,
+          "path_secret": /* hex encoded binary path secret */
+        }
+        ...
+      ]
+    }
+    ...
+  ],
+
+  "update_paths": [
+    {
+      "sender": /* uint32 leaf index */,
+      "update_path": /* hex-encoded UpdatePath */,
+      "path_secrets": [
+        /* hex-encoded binary data, null for j == i */
+        ...
+      ],
+      "commit_secret": /* hex-encoded binary data */
+      "tree_hash_after": /* hex-encoded binary data */
+    }
+    ...
+  ],'
+
 }
 ```
 
-Some of the binary fields contain TLS-serialized objects:
-* `ratchet_tree_before` and `ratchet_tree_after` contain serialized ratchet
-  trees, as in [the `ratchet_tree` extension](https://tools.ietf.org/html/draft-ietf-mls-protocol-11#section-11.3)
-* `my_key_package` contains a KeyPackage object
-* `update_path` contains an UpdatePath object
-* The exclusion list in the update path is empty.
+When creating or processing an UpdatePath, the GroupContext object used as
+context should have the following values:
+
+* `cipher_suite`, `group_id`, `epoch`, and `confirmed_transcript_hash` as provided
+* `tree_hash` reflecting `ratchet_tree` as updated by the UpdatePath
+* Empty `extensions`
 
 Verification:
-* Verify that the tree hash of `tree_before` equals `tree_hash_before`
-* Verify that the tree hash of `tree_after` equals `tree_hash_after`
-* Verify that both `tree_before` and `tree_after` have valid parent hashes
-* Identify the test participant's location in the tree using `my_key_package`
-* Initialize the private state of the tree by setting `my_path_secret` at the
-  common ancestor between the test participant's leaf and `add_sender`
-  and `my_leaf_secret` for the leaf
-* Verify that the root secret for the initial tree matches `root_secret_after_add`
-* Process the `update_path` to get a new root secret and update the tree
-* Verify that the new root root secret matches `root_secret_after_update`
-* Verify that the tree now matches `tree_after`
+* For each entry in `leaves_private`, initialize a private TreeKEM state
+  `leaf_private[index]` in the following way:
+  * Associate `encryption_priv` and `signature_priv` with the leaf node
+  * For each entry in `path_secrets`:
+    * Identify the node in the tree with node index `node` in the array
+      representation of the tree
+    * Set the private value at this node based on `path_secret`
+  * Verify that the resulting private state `leaf_private[i]` is consistent with
+    the `ratchet_tree`, in the sense that for every node in the private state,
+    the corresponding node in the tree is (a) not blank and (b) contains the
+    public key corresponding to the private key in the private state.
+* Construct a GroupContext object using the provided `cipher_suite`, `group_id`,
+  `epoch`, and `confirmed_transcript_hash`, and the root tree hash of
+  `ratchet_tree`
+* For each entry in `update_paths`:
+  * Verify that `update_path` is parent-hash valid relative to
+    `ratchet_tree`
+  * For each leaf node index `j != i` for which the leaf node is not blank:
+    * Process `update_path` using `private_leaf[j]`
+    * Verify that `path_secrets[j]` is the decrypted path secret
+    * Verify that `commit_secret` is the resulting commit secret
+  * Compute the ratchet tree that results from merging `update_path`
+    into `ratchet_tree`, and verify that its root tree hash is equal to
+    `.tree_hash_after`
+  * Create a new UpdatePath `new_update_path`, using `ratchet_tree`,
+    `leaves[i].signature_priv`, and the GroupContext computed above.  Note the
+    resulting commit secret `new_commit_secret`
+  * For each leaf node index `j != i` for which the leaf node is not blank:
+    * Process `new_update_path` using `private_leaf[j]`
+    * Verify that the resulting commit secret is `new_commit_secret`
 
 ## Messages
 
