@@ -56,101 +56,6 @@ class MLSClientImpl final : public MLSClient::Service
     return Status::OK;
   }
 
-  Status GenerateTestVector(ServerContext* /* context */,
-                            const GenerateTestVectorRequest* request,
-                            GenerateTestVectorResponse* reply) override
-  {
-    std::cout << "Got GenerateTestVector request: ";
-    switch (request->test_vector_type()) {
-      case TestVectorType::TREE_MATH: {
-        std::cout << "Tree math" << std::endl;
-        break;
-      }
-
-      case TestVectorType::ENCRYPTION: {
-        std::cout << "Encryption" << std::endl;
-        break;
-      }
-
-      case TestVectorType::KEY_SCHEDULE: {
-        std::cout << "Key schedule" << std::endl;
-        break;
-      }
-
-      case TestVectorType::TRANSCRIPT: {
-        std::cout << "Transcript" << std::endl;
-        break;
-      }
-
-      case TestVectorType::TREEKEM: {
-        std::cout << "TreeKEM" << std::endl;
-        break;
-      }
-
-      case TestVectorType::MESSAGES: {
-        std::cout << "Messages" << std::endl;
-        break;
-      }
-
-      default: {
-        std::cout << "Invalid" << std::endl;
-        return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
-      }
-    }
-
-    reply->set_test_vector(fixed_test_vector);
-    return Status::OK;
-  }
-
-  Status VerifyTestVector(ServerContext* /* context */,
-                          const VerifyTestVectorRequest* request,
-                          VerifyTestVectorResponse* /* reply */) override
-  {
-    std::cout << "Got VerifyTestVector request: ";
-    switch (request->test_vector_type()) {
-      case TestVectorType::TREE_MATH: {
-        std::cout << "Tree math" << std::endl;
-        break;
-      }
-
-      case TestVectorType::ENCRYPTION: {
-        std::cout << "Encryption" << std::endl;
-        break;
-      }
-
-      case TestVectorType::KEY_SCHEDULE: {
-        std::cout << "Key schedule" << std::endl;
-        break;
-      }
-
-      case TestVectorType::TRANSCRIPT: {
-        std::cout << "Transcript" << std::endl;
-        break;
-      }
-
-      case TestVectorType::TREEKEM: {
-        std::cout << "TreeKEM" << std::endl;
-        break;
-      }
-
-      case TestVectorType::MESSAGES: {
-        std::cout << "Messages" << std::endl;
-        break;
-      }
-
-      default: {
-        std::cout << "Invalid" << std::endl;
-        return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector type");
-      }
-    }
-
-    if (request->test_vector() != fixed_test_vector) {
-      return Status(StatusCode::INVALID_ARGUMENT, "Invalid test vector");
-    }
-
-    return Status::OK;
-  }
-
   // Ways to become a member of a group
   Status CreateGroup(ServerContext* /* context */,
                      const CreateGroupRequest* /* request */,
@@ -301,13 +206,6 @@ class MLSClientImpl final : public MLSClient::Service
 
   Status ReInitProposal(ServerContext* /* context */,
                         const ReInitProposalRequest* /* request */,
-                        ProposalResponse* /* response */) override
-  {
-    return Status::OK; // TODO
-  }
-
-  Status AppAckProposal(ServerContext* /* context */,
-                        const AppAckProposalRequest* /* request */,
                         ProposalResponse* /* response */) override
   {
     return Status::OK; // TODO

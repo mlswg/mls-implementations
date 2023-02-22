@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -28,9 +27,9 @@ func newID(universe map[uint32]bool) uint32 {
 	return id
 }
 
-///
-/// Mock client implementation
-///
+// /
+// / Mock client implementation
+// /
 type MockClient struct {
 	pb.MLSClientServer
 	transactions map[uint32]bool
@@ -52,68 +51,6 @@ func (mc *MockClient) Name(ctx context.Context, req *pb.NameRequest) (*pb.NameRe
 func (mc *MockClient) SupportedCiphersuites(ctx context.Context, req *pb.SupportedCiphersuitesRequest) (*pb.SupportedCiphersuitesResponse, error) {
 	log.Printf("Received SupportedCiphersuites request")
 	return &pb.SupportedCiphersuitesResponse{Ciphersuites: supportedCiphersuites}, nil
-}
-
-func (mc *MockClient) GenerateTestVector(ctx context.Context, req *pb.GenerateTestVectorRequest) (*pb.GenerateTestVectorResponse, error) {
-	log.Printf("Received GenerateTestVector request")
-
-	switch req.TestVectorType {
-	case pb.TestVectorType_TREE_MATH:
-		log.Printf("Tree math test vector request")
-
-	case pb.TestVectorType_ENCRYPTION:
-		log.Printf("Encryption test vector request")
-
-	case pb.TestVectorType_KEY_SCHEDULE:
-		log.Printf("Key schedule test vector request")
-
-	case pb.TestVectorType_TRANSCRIPT:
-		log.Printf("Transcript test vector request")
-
-	case pb.TestVectorType_TREEKEM:
-		log.Printf("TreeKEM test vector request")
-
-	case pb.TestVectorType_MESSAGES:
-		log.Printf("Messages test vector request")
-
-	default:
-		return nil, status.Error(codes.InvalidArgument, "Invalid test vector type")
-	}
-
-	return &pb.GenerateTestVectorResponse{TestVector: testVector}, nil
-}
-
-func (mc *MockClient) VerifyTestVector(ctx context.Context, req *pb.VerifyTestVectorRequest) (*pb.VerifyTestVectorResponse, error) {
-	log.Printf("Received VerifyTestVector request")
-
-	switch req.TestVectorType {
-	case pb.TestVectorType_TREE_MATH:
-		log.Printf("Tree math test vector request")
-
-	case pb.TestVectorType_ENCRYPTION:
-		log.Printf("Encryption test vector request")
-
-	case pb.TestVectorType_KEY_SCHEDULE:
-		log.Printf("Key schedule test vector request")
-
-	case pb.TestVectorType_TRANSCRIPT:
-		log.Printf("Transcript test vector request")
-
-	case pb.TestVectorType_TREEKEM:
-		log.Printf("TreeKEM test vector request")
-
-	case pb.TestVectorType_MESSAGES:
-		log.Printf("Messages test vector request")
-
-	default:
-		return nil, status.Error(codes.InvalidArgument, "Invalid test vector type")
-	}
-
-	if !bytes.Equal(req.TestVector, testVector) {
-		return nil, status.Error(codes.InvalidArgument, "Invalid test vector")
-	}
-
-	return &pb.VerifyTestVectorResponse{}, nil
 }
 
 // Ways to become a member of a group
@@ -260,11 +197,6 @@ func (mc *MockClient) PSKProposal(ctx context.Context, in *pb.PSKProposalRequest
 }
 
 func (mc *MockClient) ReInitProposal(ctx context.Context, in *pb.ReInitProposalRequest) (*pb.ProposalResponse, error) {
-	resp := &pb.ProposalResponse{}
-	return resp, nil // TODO
-}
-
-func (mc *MockClient) AppAckProposal(ctx context.Context, in *pb.AppAckProposalRequest) (*pb.ProposalResponse, error) {
 	resp := &pb.ProposalResponse{}
 	return resp, nil // TODO
 }
