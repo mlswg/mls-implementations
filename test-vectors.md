@@ -379,7 +379,7 @@ Verification:
   [the specification](https://datatracker.ietf.org/doc/html/draft-ietf-mls-protocol-17#name-pre-shared-keys)
   and verify that it matches the provided `psk_secret`
 
-## Commits and Transcript Hashes
+## Transcript Hashes
 
 Parameters:
 * Ciphersuite
@@ -390,40 +390,22 @@ Format:
 {
   "cipher_suite": /* uint16 */,
 
-  // Chosen by the generator
-  "group_id": /* hex-encoded binary data */,
-  "epoch": /* uint64 */,
-  "tree_hash_before": /* hex-encoded binary data */,
-  "confirmed_transcript_hash_before": /* hex-encoded binary data */,
-  "interim_transcript_hash_before": /* hex-encoded binary data */,
-  "credential": /* hex-encoded binary data */,
-
-  "membership_key": /* hex-encoded binary data */,
+  /* Chosen by the generator */
   "confirmation_key": /* hex-encoded binary data */,
-  "commit": /* hex-encoded TLS-serialized MLSPlaintext(Commit) */
+  "authenticated_content": /* hex-encoded TLS serialized AuthenticatedContent */,
+  "interim_transcript_hash_before": /* hex-encoded binary data */,
   
-  // Computed values
-  "group_context": /* hex-encoded binary data */,
+  /* Computed values */
   "confirmed_transcript_hash_after": /* hex-encoded binary data */,
   "interim_transcript_hash_after": /* hex-encoded binary data */,
 }
 ```
 
 Verification:
-* Verify that `confirmed_transcript_hash_after` and
-  `interim_transcript_hash_after` are the result of updating
-  `interim_transcript_hash_before` with `commit`
-* Verify that group context matches the provided `group_context` value
-* Verify that `commit.confirmation_tag` is present and verifies using
-  `confirmed_transcript_hash_after` and `confirmation_key`
-* Verify that the commit has a valid signature using the `credential`
-* Verify that `commit.membership_tag` is present and verifies using
-  `membership_key` and a GroupContext object with the following contents:
-  * `group_id = group_id`
-  * `epoch = epoch`
-  * `tree_hash = tree_hash_before`
-  * `confirmed_transcript_hash = confirmed_transcript_hash_before`
-  * `extensions = {}`
+* Verify that `interim_transcript_hash` corresponds to the interim transcript
+  hash with input `confirmation_key` and `confirmed_transcript_hash_before`.
+* Verify that `confirmed_transcript_hash_after` are the result of updating
+  `interim_transcript_hash` with `authenticated_content`
 
 ## Welcome
 
