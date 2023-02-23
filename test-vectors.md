@@ -402,10 +402,13 @@ Format:
 ```
 
 Verification:
-* Verify that `interim_transcript_hash` corresponds to the interim transcript
-  hash with input `confirmation_key` and `confirmed_transcript_hash_before`.
-* Verify that `confirmed_transcript_hash_after` are the result of updating
-  `interim_transcript_hash` with `authenticated_content`
+* Verify that `authenticated_content` contains a Commit, and
+  `authenticated_content.auth.confirmation_tag` is a valid MAC for
+  `authenticated_content` with key `confirmation_key` and input
+  `interim_transcript_hash_before`
+* Verify that `confirmed_transcript_hash_after` and
+  `interim_transcript_hash_after` are the result of updating
+  `interim_transcript_hash_before` with `authenticated_content`
 
 ## Welcome
 
