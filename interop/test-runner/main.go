@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -876,21 +877,25 @@ func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
 
 	configs := make([]ScriptActorConfig, 0, configSize)
 	for suite, clients := range p.suiteSupport {
-		for _, combo := range combinations(len(clients), len(actors)) {
-			for _, encrypt := range []bool{true, false} {
-				config := ScriptActorConfig{
-					CipherSuite:      suite,
-					EncryptHandshake: encrypt,
-					ActorClients:     map[string]*Client{},
-				}
-
-				for i := range actors {
-					config.ActorClients[actors[i]] = p.clients[combo[i]]
-				}
-
-				configs = append(configs, config)
+		for _, encrypt := range []bool{true, false} {
+			config := ScriptActorConfig{
+				CipherSuite:      suite,
+				EncryptHandshake: encrypt,
+				ActorClients:     map[string]*Client{},
 			}
+
+			seed := rand.Int63()
+			fmt.Println("Preparing script matrix with random seed", seed)
+			rand.Seed(seed)
+			combo := rand.Perm(len(actors))
+
+			for i := range actors {
+				config.ActorClients[actors[combo[i]]] = p.clients[clients[i%len(clients)]]
+			}
+
+			configs = append(configs, config)
 		}
+
 	}
 
 	return configs

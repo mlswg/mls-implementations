@@ -1,5 +1,7 @@
 {
   "clients": [
+    "localhost:50001",
+    "localhost:50002",
     "localhost:50003"
   ],
   "scripts": {
@@ -18,7 +20,14 @@
           {"action": "handleCommit", "actor": "charlie", "commit": 10},
           {"action": "handlePendingCommit", "actor": "alice"},
           {"action": "protect", "actor": "alice", "applicationData": "aGVsbG8="},
-          {"action": "unprotect", "actor": "charlie", "ciphertext": 13}
+          {"action": "unprotect", "actor": "charlie", "ciphertext": 13},
+          {"action": "createKeyPackage", "actor": "1bob"},
+          {"action": "createKeyPackage", "actor": "2bob"},
+          {"action": "createKeyPackage", "actor": "3bob"},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 15},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 16},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 17},
+          {"action": "commit", "actor": "alice", "byReference": []}
         ]
   }
 }
