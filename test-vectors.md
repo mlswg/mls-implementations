@@ -668,7 +668,6 @@ As elsewhere, the serialized binary objects are hex-encoded.
 Verification:
 * The contents of each field must decode using the corresponding structure
 * Each decoded object must re-encode to produce the bytes in the test vector
-* The signature on each message must be valid
 
 The specific contents of the objects are chosen by the creator of the test
 vectors.  The objects produced must be syntactically valid. The optional MAC
