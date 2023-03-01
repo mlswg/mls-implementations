@@ -259,7 +259,6 @@ Verification:
   * Verify that protecting the raw value with the provided `membership_key` and
     `signature_priv` produces a PublicMessage that verifies with `membership_key`
     and `signature_pub`
-    * When protecting the Commit message, add the supplied confirmation tag
     * For the application message, instead verify that protecting as a
       PublicMessage fails
   * Verify that the `priv` message successfully unprotects using the secret tree
@@ -267,7 +266,6 @@ Verification:
   * Verify that protecting the raw value with the secret tree,
     `sender_data_secret`, and `signature_priv` produces a PrivateMessage that
     unprotects with the secret tree, `sender_data_secret`, and `signature_pub`
-    * When protecting the Commit message, add the supplied confirmation tag
 
 ## Key Schedule
 
