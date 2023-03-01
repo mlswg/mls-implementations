@@ -1,5 +1,4 @@
 use clap::Parser;
-use std::convert::TryFrom;
 use std::net::IpAddr;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -13,23 +12,6 @@ pub mod mls_client {
 
 const IMPLEMENTATION_NAME: &str = "Mock-Rust";
 const SUPPORTED_CIPHERSUITES: [u32; 2] = [0xA0A0, 0xA1A1];
-const TEST_VECTOR: [u8; 4] = [0, 1, 2, 3];
-
-impl TryFrom<i32> for TestVectorType {
-    type Error = ();
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(TestVectorType::TreeMath),
-            1 => Ok(TestVectorType::Encryption),
-            2 => Ok(TestVectorType::KeySchedule),
-            3 => Ok(TestVectorType::Transcript),
-            4 => Ok(TestVectorType::Treekem),
-            5 => Ok(TestVectorType::Messages),
-            _ => Err(()),
-        }
-    }
-}
 
 #[derive(Default)]
 pub struct MlsClientImpl {}
@@ -76,69 +58,6 @@ impl MlsClient for MlsClientImpl {
         };
 
         Ok(Response::new(response))
-    }
-
-    async fn generate_test_vector(
-        &self,
-        request: tonic::Request<GenerateTestVectorRequest>,
-    ) -> Result<tonic::Response<GenerateTestVectorResponse>, tonic::Status> {
-        println!("Got GenerateTestVector request");
-
-        let obj = request.get_ref();
-        let type_msg = match TestVectorType::try_from(obj.test_vector_type) {
-            Ok(TestVectorType::TreeMath) => "Tree math",
-            Ok(TestVectorType::Encryption) => "Encryption",
-            Ok(TestVectorType::KeySchedule) => "Key Schedule",
-            Ok(TestVectorType::Transcript) => "Transcript",
-            Ok(TestVectorType::Treekem) => "TreeKEM",
-            Ok(TestVectorType::Messages) => "Messages",
-            Err(_) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "Invalid test vector type",
-                ));
-            }
-        };
-        println!("{} test vector request", type_msg);
-
-        let response = GenerateTestVectorResponse {
-            test_vector: TEST_VECTOR.to_vec(),
-        };
-
-        Ok(Response::new(response))
-    }
-
-    async fn verify_test_vector(
-        &self,
-        request: tonic::Request<VerifyTestVectorRequest>,
-    ) -> Result<tonic::Response<VerifyTestVectorResponse>, tonic::Status> {
-        println!("Got VerifyTestVector request");
-
-        let obj = request.get_ref();
-        let type_msg = match TestVectorType::try_from(obj.test_vector_type) {
-            Ok(TestVectorType::TreeMath) => "Tree math",
-            Ok(TestVectorType::Encryption) => "Encryption",
-            Ok(TestVectorType::KeySchedule) => "Key Schedule",
-            Ok(TestVectorType::Transcript) => "Transcript",
-            Ok(TestVectorType::Treekem) => "TreeKEM",
-            Ok(TestVectorType::Messages) => "Messages",
-            Err(_) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "Invalid test vector type",
-                ));
-            }
-        };
-        println!("{} test vector request", type_msg);
-
-        if obj.test_vector != TEST_VECTOR {
-            return Err(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "Invalid test vector",
-            ));
-        }
-
-        Ok(Response::new(VerifyTestVectorResponse::default()))
     }
 
     async fn create_group(

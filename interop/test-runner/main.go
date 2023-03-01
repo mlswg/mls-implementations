@@ -17,9 +17,9 @@ import (
 	pb "github.com/mlswg/mls-implementations/interop/proto"
 )
 
-///
-/// Configuration
-///
+// /
+// / Configuration
+// /
 type ScriptAction string
 
 const (
@@ -109,8 +109,6 @@ func (step *ScriptStep) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type TestVectorConfig []string
-
 type Script []ScriptStep
 
 func (s Script) Actors() []string {
@@ -132,23 +130,13 @@ func (s Script) Actors() []string {
 }
 
 type RunConfig struct {
-	Clients     []string          `json:"clients"`
-	TestVectors TestVectorConfig  `json:"test_vectors,omitempty"`
-	Scripts     map[string]Script `json:"scripts",omitempty`
+	Clients []string          `json:"clients"`
+	Scripts map[string]Script `json:"scripts",omitempty`
 }
 
-///
-/// Results
-///
-type TestVectorResult struct {
-	Generator   string `json:"generator"`
-	Verifier    string `json:"verifier"`
-	CipherSuite uint32 `json:"cipher_suite,omitempty"`
-	Error       string `json:"error,omitempty"`
-}
-
-type TestVectorResults map[string][]TestVectorResult
-
+// /
+// / Results
+// /
 type ScriptResult struct {
 	CipherSuite      uint32            `json:"cipher_suite"`
 	Actors           map[string]string `json:"actors"`
@@ -162,13 +150,12 @@ type ScriptResult struct {
 type ScriptResults []ScriptResult
 
 type TestResults struct {
-	TestVectors TestVectorResults        `json:"test_vectors"`
-	Scripts     map[string]ScriptResults `json:"scripts"`
+	Scripts map[string]ScriptResults `json:"scripts"`
 }
 
-///
-/// Clients
-///
+// /
+// / Clients
+// /
 type Client struct {
 	conn      *grpc.ClientConn
 	rpc       pb.MLSClientClient
@@ -248,78 +235,6 @@ func (p *ClientPool) Close() {
 	for _, c := range p.clients {
 		c.conn.Close()
 	}
-}
-
-func (p *ClientPool) RunTestVectors(config TestVectorConfig) TestVectorResults {
-	results := TestVectorResults{}
-	for _, typeString := range config {
-		typeVal, ok := testVectorType[typeString]
-		if !ok {
-			log.Fatalf("Invalid test vector type [%s]", typeString)
-		}
-
-		tvResults := []TestVectorResult{}
-		for _, generator := range p.clients {
-			// Generate test vectors for all supported ciphersuites
-			generatedVectors := map[uint32][]byte{0: []byte{}}
-			if cipherSuiteDependent[typeVal] {
-				delete(generatedVectors, 0)
-				for suite := range generator.supported {
-					generatedVectors[suite] = []byte{}
-				}
-			}
-
-			for suite := range generatedVectors {
-				genReq := &pb.GenerateTestVectorRequest{
-					TestVectorType: typeVal,
-					CipherSuite:    suite,
-					NLeaves:        testVectorParams.NLeaves,
-					NGenerations:   testVectorParams.NGenerations,
-					NEpochs:        testVectorParams.NEpochs,
-				}
-				genResp, err := generator.rpc.GenerateTestVector(ctx(), genReq)
-				if err != nil {
-					log.Printf("Error generating test vector [%s] [%s] [%v]", typeString, generator.name, err)
-					continue
-				}
-
-				generatedVectors[suite] = genResp.TestVector
-			}
-
-			// Verify test vectors for each supported ciphersuite with other clients
-			for _, verifier := range p.clients {
-				for suite, testVector := range generatedVectors {
-					if suite != 0 && !verifier.supported[suite] {
-						continue
-					}
-
-					if len(testVector) == 0 {
-						// This indicates that there was an error generating the vector
-						continue
-					}
-
-					verReq := &pb.VerifyTestVectorRequest{TestVectorType: typeVal, TestVector: testVector}
-					_, err := verifier.rpc.VerifyTestVector(ctx(), verReq)
-
-					errStr := ""
-					if err != nil {
-						errStr = err.Error()
-					}
-
-					tvResults = append(tvResults, TestVectorResult{
-						Generator:   generator.name,
-						CipherSuite: suite,
-						Verifier:    verifier.name,
-						Error:       errStr,
-					})
-				}
-			}
-		}
-
-		results[typeString] = tvResults
-	}
-
-	return results
 }
 
 func combinations(vals, slots int) [][]int {
@@ -1030,9 +945,9 @@ func (p *ClientPool) RunScript(name string, script Script) ScriptResults {
 	return results
 }
 
-///
-/// Main logic
-///
+// /
+// / Main logic
+// /
 var (
 	configOpt string
 )
@@ -1043,24 +958,6 @@ func init() {
 }
 
 var (
-	testVectorType = map[string]pb.TestVectorType{
-		"tree_math":    pb.TestVectorType_TREE_MATH,
-		"encryption":   pb.TestVectorType_ENCRYPTION,
-		"key_schedule": pb.TestVectorType_KEY_SCHEDULE,
-		"transcript":   pb.TestVectorType_TRANSCRIPT,
-		"treekem":      pb.TestVectorType_TREEKEM,
-		"messages":     pb.TestVectorType_MESSAGES,
-	}
-
-	cipherSuiteDependent = map[pb.TestVectorType]bool{
-		pb.TestVectorType_TREE_MATH:    false,
-		pb.TestVectorType_ENCRYPTION:   true,
-		pb.TestVectorType_KEY_SCHEDULE: true,
-		pb.TestVectorType_TRANSCRIPT:   true,
-		pb.TestVectorType_TREEKEM:      true,
-		pb.TestVectorType_MESSAGES:     false,
-	}
-
 	testVectorParams = struct {
 		NLeaves      uint32
 		NGenerations uint32
@@ -1089,10 +986,10 @@ func main() {
 	chk("Failure to conenct to clients", err)
 	defer clientPool.Close()
 
-	// Run test vectors
-	results := TestResults{}
-	results.TestVectors = clientPool.RunTestVectors(config.TestVectors)
-	results.Scripts = map[string]ScriptResults{}
+	// Run scripts
+	results := TestResults{
+		Scripts: map[string]ScriptResults{},
+	}
 	for name, script := range config.Scripts {
 		results.Scripts[name] = clientPool.RunScript(name, script)
 	}
