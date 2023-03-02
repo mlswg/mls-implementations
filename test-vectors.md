@@ -690,12 +690,20 @@ Format:
 {
   "cipher_suite": /* uint16 */,
 
+  "external_psks": [
+    {
+      "psk_id": /* hex-encoded binary data */,
+      "psk": /* hex-encoded binary data */
+    },
+    // ...
+  ]
   "key_package": /* serialized KeyPackage */,
   "signature_priv":  /* hex-encoded binary data */,
   "encryption_priv": /* hex-encoded binary data */,
   "init_priv": /* hex-encoded binary data */,
 
   "welcome":  /* serialized MLSMessage (Welcome) */,
+  "ratchet_tree": /* hex-encoded optional<Node> ratchet_tree<V>, null if the tree is in the welcome message */,
   "initial_epoch_authenticator":  /* hex-encoded binary data */,
   
   "epochs": [
@@ -715,8 +723,11 @@ Format:
 Verification:
 
 * Verify that `signature_priv`, `leaf_priv`, and `init_priv` correspond to the
-  public keys (`signature_key`, `encryption_key`, and `init_key`) in the KeyPackage object described by `key_package`
-* Join the group using the Welcome message described by `welcome`
+  public keys (`signature_key`, `encryption_key`, and `init_key`) in the
+  KeyPackage object described by `key_package`
+* Join the group using the Welcome message described by `welcome`, the ratchet
+  tree described by `ratchet_tree` (if given) and the pre-shared keys described
+  in `external_psks`
 * Verify that the locally computed `epoch_authenticator` value is equal to the
   `initial_epoch_authenticator` value
 * For each entry in `epochs`:
