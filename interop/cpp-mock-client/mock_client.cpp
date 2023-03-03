@@ -221,6 +221,7 @@ class MLSClientImpl final : public MLSClient::Service
 
     response->set_commit("commit");
     response->set_welcome("welcome");
+    response->set_epoch_authenticator("epoch_authenticator");
     return Status::OK;
   }
 
@@ -237,22 +238,20 @@ class MLSClientImpl final : public MLSClient::Service
     }
 
     response->set_state_id(newID(states));
+    response->set_epoch_authenticator("epoch_authenticator");
     return Status::OK;
   }
 
-  Status HandleExternalCommit(ServerContext* /* context */,
-                              const HandleExternalCommitRequest* request,
-                              HandleExternalCommitResponse* response) override
+  Status HandlePendingCommit(ServerContext* /* context */,
+                      const HandlePendingCommitRequest* request,
+                      HandleCommitResponse* response) override
   {
     if (states.count(request->state_id()) == 0) {
       return Status(StatusCode::INVALID_ARGUMENT, "Invalid state");
     }
 
-    if (request->commit() != "commit") {
-      return Status(StatusCode::INVALID_ARGUMENT, "Invalid commit");
-    }
-
     response->set_state_id(newID(states));
+    response->set_epoch_authenticator("epoch_authenticator");
     return Status::OK;
   }
 };

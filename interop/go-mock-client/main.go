@@ -208,8 +208,9 @@ func (mc *MockClient) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.Com
 	}
 
 	resp := &pb.CommitResponse{
-		Commit:  []byte("commit"),
-		Welcome: []byte("welcome"),
+		Commit:             []byte("commit"),
+		Welcome:            []byte("welcome"),
+		EpochAuthenticator: []byte("epoch_authenticator"),
 	}
 
 	return resp, nil
@@ -226,25 +227,23 @@ func (mc *MockClient) HandleCommit(ctx context.Context, in *pb.HandleCommitReque
 	}
 
 	resp := &pb.HandleCommitResponse{
-		StateId: newID(mc.states),
+		StateId:            newID(mc.states),
+		EpochAuthenticator: []byte("epoch_authenticator"),
 	}
 
 	mc.states[resp.StateId] = true
 	return resp, nil
 }
 
-func (mc *MockClient) HandleExternalCommit(ctx context.Context, in *pb.HandleExternalCommitRequest) (*pb.HandleExternalCommitResponse, error) {
+func (mc *MockClient) HandlePendingCommit(ctx context.Context, in *pb.HandlePendingCommitRequest) (*pb.HandleCommitResponse, error) {
 	if !mc.states[in.StateId] {
 		fmt.Printf("Invalid state (handle): %d\n", in.StateId)
 		return nil, status.Error(codes.InvalidArgument, "Invalid state")
 	}
 
-	if string(in.Commit) != "commit" {
-		return nil, status.Error(codes.InvalidArgument, "Invalid commit")
-	}
-
-	resp := &pb.HandleExternalCommitResponse{
-		StateId: newID(mc.states),
+	resp := &pb.HandleCommitResponse{
+		StateId:            newID(mc.states),
+		EpochAuthenticator: []byte("epoch_authenticator"),
 	}
 
 	mc.states[resp.StateId] = true

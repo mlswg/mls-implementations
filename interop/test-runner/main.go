@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -23,22 +24,21 @@ import (
 type ScriptAction string
 
 const (
-	ActionCreateGroup          ScriptAction = "createGroup"
-	ActionCreateKeyPackage     ScriptAction = "createKeyPackage"
-	ActionJoinGroup            ScriptAction = "joinGroup"
-	ActionExternalJoin         ScriptAction = "externalJoin"
-	ActionPublicGroupState     ScriptAction = "publicGroupState"
-	ActionAddProposal          ScriptAction = "addProposal"
-	ActionUpdateProposal       ScriptAction = "updateProposal"
-	ActionRemoveProposal       ScriptAction = "removeProposal"
-	ActionCommit               ScriptAction = "commit"
-	ActionHandleCommit         ScriptAction = "handleCommit"
-	ActionHandlePendingCommit  ScriptAction = "handlePendingCommit"
-	ActionHandleExternalCommit ScriptAction = "handleExternalCommit"
-	ActionVerifyStateAuth      ScriptAction = "verifyStateAuth"
-	ActionStateProperties      ScriptAction = "stateProperties"
-	ActionProtect              ScriptAction = "protect"
-	ActionUnprotect            ScriptAction = "unprotect"
+	ActionCreateGroup         ScriptAction = "createGroup"
+	ActionCreateKeyPackage    ScriptAction = "createKeyPackage"
+	ActionJoinGroup           ScriptAction = "joinGroup"
+	ActionExternalJoin        ScriptAction = "externalJoin"
+	ActionPublicGroupState    ScriptAction = "publicGroupState"
+	ActionAddProposal         ScriptAction = "addProposal"
+	ActionUpdateProposal      ScriptAction = "updateProposal"
+	ActionRemoveProposal      ScriptAction = "removeProposal"
+	ActionCommit              ScriptAction = "commit"
+	ActionHandleCommit        ScriptAction = "handleCommit"
+	ActionHandlePendingCommit ScriptAction = "handlePendingCommit"
+	ActionVerifyStateAuth     ScriptAction = "verifyStateAuth"
+	ActionStateProperties     ScriptAction = "stateProperties"
+	ActionProtect             ScriptAction = "protect"
+	ActionUnprotect           ScriptAction = "unprotect"
 
 	ScriptStateProperties = "stateProperties"
 	ActorLeader           = "leader"
@@ -492,6 +492,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "commit", resp.Commit)
 		config.StoreMessage(index, "welcome", resp.Welcome)
+		config.StoreMessage(index, "epoch_authenticator", resp.EpochAuthenticator)
 
 	case ActionProtect:
 		client := config.ActorClients[step.Actor]
@@ -569,21 +570,13 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.stateID[step.Actor] = resp.StateId
 
-		for i, leafIndex := range resp.Added {
-			config.StoreInteger(index, fmt.Sprintf("added %d", i), leafIndex)
+		epochAuthenticator, err := config.GetMessage(params.Commit, "epoch_authenticator")
+		if err != nil {
+			return err
 		}
 
-		for i, leafIndex := range resp.Updated {
-			config.StoreInteger(index, fmt.Sprintf("updated %d", i), leafIndex)
-		}
-
-		if len(resp.RemovedIndices) != len(resp.RemovedLeaves) {
-			return fmt.Errorf("Lengths of removed leaves (%d) and indices(%d) do not match.", len(resp.RemovedLeaves), len(resp.RemovedIndices))
-		}
-
-		for i := 0; i < len(resp.RemovedIndices); i++ {
-			config.StoreInteger(index, fmt.Sprintf("removedIndex %d", i), resp.RemovedIndices[i])
-			config.StoreMessage(index, fmt.Sprintf("removedLeaf %d", i), resp.RemovedLeaves[i])
+		if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+			return fmt.Errorf("Epoch authenticator mismatch")
 		}
 
 	case ActionHandlePendingCommit:
@@ -595,55 +588,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		resp, err := client.rpc.HandlePendingCommit(ctx(), req)
 
-		if err != nil {
-			return err
-		}
-
-		config.stateID[step.Actor] = resp.StateId
-
-		for i, leafIndex := range resp.Added {
-			config.StoreInteger(index, fmt.Sprintf("added %d", i), leafIndex)
-		}
-
-		for i, leafIndex := range resp.Updated {
-			config.StoreInteger(index, fmt.Sprintf("updated %d", i), leafIndex)
-		}
-
-		if len(resp.RemovedIndices) != len(resp.RemovedLeaves) {
-			return fmt.Errorf("Lengths of removed leaves (%d) and indices(%d) do not match.", len(resp.RemovedLeaves), len(resp.RemovedIndices))
-		}
-
-		for i := 0; i < len(resp.RemovedIndices); i++ {
-			config.StoreInteger(index, fmt.Sprintf("removedIndex %d", i), resp.RemovedIndices[i])
-			config.StoreMessage(index, fmt.Sprintf("removedLeaf %d", i), resp.RemovedLeaves[i])
-		}
-
-	case ActionHandleExternalCommit:
-		client := config.ActorClients[step.Actor]
-		var params HandleCommitStepParams
-		err := json.Unmarshal(step.Raw, &params)
-		if err != nil {
-			return err
-		}
-
-		commit, err := config.GetMessage(params.Commit, "commit")
-		if err != nil {
-			return err
-		}
-
-		byRef := make([][]byte, len(params.ByReference))
-		for i, ix64 := range params.ByReference {
-			byRef[i], err = config.GetMessage(int(ix64), "proposal")
-			if err != nil {
-				return err
-			}
-		}
-
-		req := &pb.HandleExternalCommitRequest{
-			StateId: config.stateID[step.Actor],
-			Commit:  commit,
-		}
-		resp, err := client.rpc.HandleExternalCommit(ctx(), req)
 		if err != nil {
 			return err
 		}
