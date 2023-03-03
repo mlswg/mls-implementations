@@ -131,8 +131,9 @@ func (s Script) Actors() []string {
 }
 
 type RunConfig struct {
-	Clients []string          `json:"clients"`
-	Scripts map[string]Script `json:"scripts",omitempty`
+	Clients               []string          `json:"clients"`
+	Scripts               map[string]Script `json:"scripts",omitempty`
+	RunForAllCombinations bool              `json:run_for_all_combinations`
 }
 
 // /
@@ -872,7 +873,7 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	return result
 }
 
-func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
+func (p *ClientPool) ScriptMatrix(actors []string, all_combos bool) []ScriptActorConfig {
 	configSize := 2 * len(p.suiteSupport) * len(p.clients)
 
 	configs := make([]ScriptActorConfig, 0, configSize)
@@ -884,13 +885,21 @@ func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
 				ActorClients:     map[string]*Client{},
 			}
 
-			seed := rand.Int63()
-			fmt.Println("Preparing script matrix with random seed", seed)
-			rand.Seed(seed)
-			combo := rand.Perm(len(actors))
+			if all_combos {
+				for _, combo := range combinations(len(clients), len(actors)) {
+					for i := range actors {
+						config.ActorClients[actors[i]] = p.clients[combo[i]]
+					}
+				}
+			} else {
+				seed := rand.Int63()
+				fmt.Println("Preparing script matrix with random seed", seed)
+				rand.Seed(seed)
+				combo := rand.Perm(len(actors))
 
-			for i := range actors {
-				config.ActorClients[actors[combo[i]]] = p.clients[clients[i%len(clients)]]
+				for i := range actors {
+					config.ActorClients[actors[combo[i]]] = p.clients[clients[i%len(clients)]]
+				}
 			}
 
 			configs = append(configs, config)
@@ -932,10 +941,10 @@ func (p *ClientPool) AllClientsForEachSuite() []ScriptActorConfig {
 	return configs
 }
 
-func (p *ClientPool) RunScript(name string, script Script) ScriptResults {
+func (p *ClientPool) RunScript(name string, script Script, all_combos bool) ScriptResults {
 	actors := script.Actors()
 
-	configs := p.ScriptMatrix(actors)
+	configs := p.ScriptMatrix(actors, all_combos)
 	if name == ScriptStateProperties {
 		configs = p.AllClientsForEachSuite()
 	}
@@ -996,7 +1005,7 @@ func main() {
 		Scripts: map[string]ScriptResults{},
 	}
 	for name, script := range config.Scripts {
-		results.Scripts[name] = clientPool.RunScript(name, script)
+		results.Scripts[name] = clientPool.RunScript(name, script, config.RunForAllCombinations)
 	}
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")

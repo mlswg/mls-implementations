@@ -4,6 +4,7 @@
     "localhost:50002",
     "localhost:50003"
   ],
+  "run_for_all_combinations": false,
   "scripts": {
         "two_party": [
           {"action": "createGroup", "actor": "alice"},
