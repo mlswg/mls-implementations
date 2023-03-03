@@ -1,6 +1,6 @@
 {
   "clients": [
-    "localhost:50003"
+    "localhost:5000"
   ],
   "scripts": {
         "two_party": [
@@ -9,7 +9,7 @@
           {"action": "addProposal", "actor": "alice", "keyPackage": 1},
           {"action": "createKeyPackage", "actor": "charlie"},
           {"action": "addProposal", "actor": "alice", "keyPackage": 3},
-          {"action": "commit", "actor": "alice", "byReference": []},
+          {"action": "commit", "actor": "alice", "byReference": [2, 4]},
           {"action": "joinGroup", "actor": "bob", "welcome": 5},
           {"action": "joinGroup", "actor": "charlie", "welcome": 5},
           {"action": "handlePendingCommit", "actor": "alice"},
