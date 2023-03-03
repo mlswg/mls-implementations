@@ -301,6 +301,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			GroupId:          []byte("group"),
 			CipherSuite:      config.CipherSuite,
 			EncryptHandshake: config.EncryptHandshake,
+			Identity:         []byte(step.Actor),
 		}
 		resp, err := client.rpc.CreateGroup(ctx(), req)
 		if err != nil {
@@ -313,6 +314,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		client := config.ActorClients[step.Actor]
 		req := &pb.CreateKeyPackageRequest{
 			CipherSuite: config.CipherSuite,
+			Identity:    []byte(step.Actor),
 		}
 		resp, err := client.rpc.CreateKeyPackage(ctx(), req)
 		if err != nil {
@@ -344,6 +346,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			TransactionId:    txID,
 			Welcome:          welcome,
 			EncryptHandshake: config.EncryptHandshake,
+			Identity:         []byte(step.Actor),
 		}
 
 		resp, err := client.rpc.JoinGroup(ctx(), req)
@@ -369,6 +372,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		req := &pb.ExternalJoinRequest{
 			PublicGroupState: pgs,
 			EncryptHandshake: config.EncryptHandshake,
+			Identity:         []byte(step.Actor),
 		}
 		resp, err := client.rpc.ExternalJoin(ctx(), req)
 		if err != nil {
@@ -424,11 +428,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
-		removedStateID := config.stateID[params.Removed]
-
 		req := &pb.RemoveProposalRequest{
-			StateId: config.stateID[step.Actor],
-			Removed: removedStateID,
+			StateId:   config.stateID[step.Actor],
+			RemovedId: []byte(params.Removed),
 		}
 
 		resp, err := client.rpc.RemoveProposal(ctx(), req)
@@ -673,6 +675,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			GroupId:          []byte("group"),
 			CipherSuite:      config.CipherSuite,
 			EncryptHandshake: config.EncryptHandshake,
+			Identity:         []byte(ActorLeader),
 		}
 		cgResp, err := leader.rpc.CreateGroup(ctx(), cgReq)
 		if err != nil {
@@ -687,6 +690,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			// Get a KeyPackage
 			kpReq := &pb.CreateKeyPackageRequest{
 				CipherSuite: config.CipherSuite,
+				Identity:    []byte(actor),
 			}
 			kpResp, err := client.rpc.CreateKeyPackage(ctx(), kpReq)
 			if err != nil {
@@ -736,6 +740,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				TransactionId:    config.transactionID[actor],
 				Welcome:          commitResp.Welcome,
 				EncryptHandshake: config.EncryptHandshake,
+				Identity:         []byte(actor),
 			}
 			joinResp, err := client.rpc.JoinGroup(ctx(), joinReq)
 			if err != nil {

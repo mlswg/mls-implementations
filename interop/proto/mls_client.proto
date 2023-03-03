@@ -57,7 +57,8 @@ message SupportedCiphersuitesResponse {
 message CreateGroupRequest { 
   bytes group_id = 1;
   uint32 cipher_suite = 2; // Actually uint16
-  bool encrypt_handshake = 3; 
+  bool encrypt_handshake = 3;
+  bytes identity = 4;
 }
 
 message CreateGroupResponse {
@@ -67,6 +68,7 @@ message CreateGroupResponse {
 // rpc CreateKeyPackage
 message CreateKeyPackageRequest {
   uint32 cipher_suite = 1;
+  bytes identity = 2;
 }
 
 message CreateKeyPackageResponse {
@@ -79,6 +81,7 @@ message JoinGroupRequest {
   uint32 transaction_id = 1;
   bytes welcome = 2;
   bool encrypt_handshake = 3;
+  bytes identity = 4;
 }
 
 message JoinGroupResponse { 
@@ -89,6 +92,7 @@ message JoinGroupResponse {
 message ExternalJoinRequest {
   bytes public_group_state = 1;
   bool encrypt_handshake = 2;
+  bytes identity = 3;
 }
 
 message ExternalJoinResponse {
@@ -173,7 +177,7 @@ message UpdateProposalRequest {
 // rpc RemoveProposal
 message RemoveProposalRequest {
   uint32 state_id = 1;
-  uint32 removed = 2;
+  bytes removed_id = 2;
 }
 
 // rpc PSKProposal
