@@ -306,6 +306,7 @@ impl MlsClient for MlsClientImpl {
         let resp = CommitResponse {
             commit: String::from("commit").into_bytes(),
             welcome: String::from("welcome").into_bytes(),
+            epoch_authenticator: String::from("epoch_authenticator").into_bytes(),
         };
 
         Ok(Response::new(resp)) // TODO
@@ -335,11 +336,7 @@ impl MlsClient for MlsClientImpl {
 
         let resp = HandleCommitResponse {
             state_id: self.new_state_id(),
-            added: vec![0, 1, 2],
-            removed_indices: vec![0, 1],
-            removed_leaves: vec![vec![0u8; 10], vec![1u8; 16]],
-            updated: vec![],
-            psks: vec![],
+            epoch_authenticator: String::from("epoch_authenticator").into_bytes(),
         };
 
         Ok(Response::new(resp)) // TODO
@@ -359,40 +356,7 @@ impl MlsClient for MlsClientImpl {
 
         let resp = HandleCommitResponse {
             state_id: self.new_state_id(),
-            added: vec![0, 1, 2],
-            removed_indices: vec![0, 1],
-            removed_leaves: vec![vec![0u8; 10], vec![1u8; 16]],
-            updated: vec![],
-            psks: vec![],
-        };
-
-        Ok(Response::new(resp)) // TODO
-    }
-
-    async fn handle_external_commit(
-        &self,
-        request: tonic::Request<HandleExternalCommitRequest>,
-    ) -> Result<tonic::Response<HandleExternalCommitResponse>, tonic::Status> {
-        let obj = request.get_ref();
-        if !self.known_state_id(obj.state_id) {
-            return Err(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "Invalid state ID",
-            ));
-        }
-
-        let obj = request.get_ref();
-        let commit = String::from("commit");
-        let commit_in = String::from_utf8(obj.commit.clone()).unwrap();
-        if commit != commit_in {
-            return Err(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "Invalid commit",
-            ));
-        }
-
-        let resp = HandleExternalCommitResponse {
-            state_id: self.new_state_id(),
+            epoch_authenticator: String::from("epoch_authenticator").into_bytes(),
         };
 
         Ok(Response::new(resp)) // TODO
