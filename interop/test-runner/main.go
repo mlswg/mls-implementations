@@ -130,7 +130,6 @@ func (s Script) Actors() []string {
 }
 
 type RunConfig struct {
-	Clients []string          `json:"clients"`
 	Scripts map[string]Script `json:"scripts",omitempty`
 }
 
@@ -897,11 +896,25 @@ func (p *ClientPool) RunScript(name string, script Script) ScriptResults {
 // /
 // / Main logic
 // /
+
+type stringListFlag []string
+
+func (i *stringListFlag) String() string {
+	return "repeated options"
+}
+
+func (i *stringListFlag) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 var (
-	configOpt string
+	clientsOpt stringListFlag
+	configOpt  string
 )
 
 func init() {
+	flag.Var(&clientsOpt, "client", "host:port for a client")
 	flag.StringVar(&configOpt, "config", "config.json", "config file name")
 	flag.Parse()
 }
@@ -931,7 +944,8 @@ func main() {
 	chk("Failure to parse config file", err)
 
 	// Connect to clients
-	clientPool, err := NewClientPool(config.Clients)
+	fmt.Println("clients", clientsOpt)
+	clientPool, err := NewClientPool(clientsOpt)
 	chk("Failure to conenct to clients", err)
 	defer clientPool.Close()
 
