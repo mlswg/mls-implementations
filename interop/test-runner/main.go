@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -21,9 +22,13 @@ import (
 // /
 // / Configuration
 // /
+type ClientMode string
 type ScriptAction string
 
 const (
+	ModeAllCombinations ClientMode = "allCombinations"
+	ModeRandom          ClientMode = "random"
+
 	ActionCreateGroup         ScriptAction = "createGroup"
 	ActionCreateKeyPackage    ScriptAction = "createKeyPackage"
 	ActionJoinGroup           ScriptAction = "joinGroup"
@@ -130,6 +135,7 @@ func (s Script) Actors() []string {
 }
 
 type RunConfig struct {
+	Mode    ClientMode        `json:"mode",omitempty`
 	Scripts map[string]Script `json:"scripts",omitempty`
 }
 
@@ -234,6 +240,14 @@ func (p *ClientPool) Close() {
 	for _, c := range p.clients {
 		c.conn.Close()
 	}
+}
+
+func randomCombination(vals, slots int) []int {
+	combo := make([]int, slots)
+	for i := range combo {
+		combo[i] = rand.Intn(vals)
+	}
+	return combo
 }
 
 func combinations(vals, slots int) [][]int {
@@ -819,10 +833,9 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	return result
 }
 
-func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
-	configSize := 2 * len(p.suiteSupport) * len(p.clients)
-
-	configs := make([]ScriptActorConfig, 0, configSize)
+// Returns all possible assignments of clients to actors
+func (p *ClientPool) AllCombinations(actors []string) []ScriptActorConfig {
+	configs := []ScriptActorConfig{}
 	for suite, clients := range p.suiteSupport {
 		for _, combo := range combinations(len(clients), len(actors)) {
 			for _, encrypt := range []bool{true, false} {
@@ -838,6 +851,29 @@ func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
 
 				configs = append(configs, config)
 			}
+		}
+	}
+
+	return configs
+}
+
+// Chooses a random assignment of clients to actors per mutually supported ciphersuite
+func (p *ClientPool) RandomCombination(actors []string) []ScriptActorConfig {
+	configs := []ScriptActorConfig{}
+	for suite, clients := range p.suiteSupport {
+		for _, encrypt := range []bool{true, false} {
+			config := ScriptActorConfig{
+				CipherSuite:      suite,
+				EncryptHandshake: encrypt,
+				ActorClients:     map[string]*Client{},
+			}
+
+			combo := randomCombination(len(clients), len(actors))
+			for i := range actors {
+				config.ActorClients[actors[i]] = p.clients[combo[i]]
+			}
+
+			configs = append(configs, config)
 		}
 	}
 
@@ -875,10 +911,21 @@ func (p *ClientPool) AllClientsForEachSuite() []ScriptActorConfig {
 	return configs
 }
 
-func (p *ClientPool) RunScript(name string, script Script) ScriptResults {
+func (p *ClientPool) RunScript(name string, mode ClientMode, script Script) ScriptResults {
 	actors := script.Actors()
 
-	configs := p.ScriptMatrix(actors)
+	var configs []ScriptActorConfig
+	switch mode {
+	case ModeAllCombinations:
+		configs = p.AllCombinations(actors)
+
+	case ModeRandom:
+		configs = p.RandomCombination(actors)
+
+	default:
+		panic(fmt.Sprintf("Invalid mode: %s", mode))
+	}
+
 	if name == ScriptStateProperties {
 		configs = p.AllClientsForEachSuite()
 	}
@@ -911,11 +958,13 @@ func (i *stringListFlag) Set(value string) error {
 var (
 	clientsOpt stringListFlag
 	configOpt  string
+	randomOpt  bool
 )
 
 func init() {
 	flag.Var(&clientsOpt, "client", "host:port for a client")
 	flag.StringVar(&configOpt, "config", "config.json", "config file name")
+	flag.BoolVar(&randomOpt, "random", false, "run a random assignment of clients to roles")
 	flag.Parse()
 }
 
@@ -932,6 +981,12 @@ var (
 )
 
 func main() {
+	// Determine the operating mode (full combinatorial by default)
+	mode := ModeAllCombinations
+	if randomOpt {
+		mode = ModeRandom
+	}
+
 	// Load and parse the config
 	jsonFile, err := os.Open(configOpt)
 	chk("Failure to open config file", err)
@@ -944,7 +999,6 @@ func main() {
 	chk("Failure to parse config file", err)
 
 	// Connect to clients
-	fmt.Println("clients", clientsOpt)
 	clientPool, err := NewClientPool(clientsOpt)
 	chk("Failure to conenct to clients", err)
 	defer clientPool.Close()
@@ -954,7 +1008,7 @@ func main() {
 		Scripts: map[string]ScriptResults{},
 	}
 	for name, script := range config.Scripts {
-		results.Scripts[name] = clientPool.RunScript(name, script)
+		results.Scripts[name] = clientPool.RunScript(name, mode, script)
 	}
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")

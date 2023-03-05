@@ -1,7 +1,4 @@
 {
-  "clients": [
-    "localhost:5000"
-  ],
   "scripts": {
         "two_party": [
           {"action": "createGroup", "actor": "alice"},
@@ -15,7 +12,7 @@
           {"action": "handlePendingCommit", "actor": "alice"},
           {"action": "removeProposal", "actor": "charlie", "removed": "bob"},
           {"action": "commit", "actor": "alice", "byReference": [9]},
-          {"action": "handleCommit", "actor": "charlie", "commit": 10},
+          {"action": "handleCommit", "actor": "charlie", "commit": 10, "byReference": [9]},
           {"action": "handlePendingCommit", "actor": "alice"},
           {"action": "protect", "actor": "alice", "applicationData": "aGVsbG8="},
           {"action": "unprotect", "actor": "charlie", "ciphertext": 13}
