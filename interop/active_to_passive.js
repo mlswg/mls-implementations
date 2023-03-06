@@ -66,16 +66,21 @@ function activeToPassive(steps, testCase, actor) {
   
   // Grab private state from createKeyPackage step in transcript
   const kpTranscript = transcript[my_steps[0].transcriptIndex];
-  passiveTest.key_package = kpTranscript.keyPackage;
-  // TODO likewise for private fields
+  passiveTest.key_package = kpTranscript.key_package;
+  passiveTest.init_priv = kpTranscript.init_priv;
+  passiveTest.encryption_priv = kpTranscript.encryption_priv;
+  passiveTest.signature_priv = kpTranscript.signature_priv;
   
   // Grab welcome and epoch authenticator from joinGroup
   const welcomeStep = my_steps[1];
   const commitTranscript = transcript[welcomeStep.welcome];
   passiveTest.welcome = commitTranscript.welcome;
-  // passiveTest.ratchet_tree = commitTranscript.ratchet_tree; // TODO?
   passiveTest.initial_epoch_authenticator = commitTranscript.epoch_authenticator;
   
+  // TODO Enable provisioning these fields
+  passiveTest.external_psks = [];
+  passiveTest.ratchet_tree = null;
+
   // Grab Commits 
   passiveTest.epochs = [];
   for (let i = 2; i < my_steps.length; i++) {

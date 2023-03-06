@@ -73,6 +73,9 @@ message CreateKeyPackageRequest {
 message CreateKeyPackageResponse {
   uint32 transaction_id = 1;
   bytes key_package = 2;
+  bytes init_priv = 3;
+  bytes encryption_priv = 4;
+  bytes signature_priv = 5;
 }
 
 // rpc JoinGroup
