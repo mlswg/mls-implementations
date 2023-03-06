@@ -45,13 +45,8 @@ const (
 	ActionCommit              ScriptAction = "commit"
 	ActionHandleCommit        ScriptAction = "handleCommit"
 	ActionHandlePendingCommit ScriptAction = "handlePendingCommit"
-	ActionVerifyStateAuth     ScriptAction = "verifyStateAuth"
-	ActionStateProperties     ScriptAction = "stateProperties"
 	ActionProtect             ScriptAction = "protect"
 	ActionUnprotect           ScriptAction = "unprotect"
-
-	ScriptStateProperties = "stateProperties"
-	ActorLeader           = "leader"
 
 	TimeoutSeconds = 120
 )
@@ -612,186 +607,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.stateID[step.Actor] = resp.StateId
 
-	case ActionVerifyStateAuth:
-		authSet := map[string]bool{}
-		for actor, client := range config.ActorClients {
-			req := &pb.StateAuthRequest{StateId: config.stateID[actor]}
-			resp, err := client.rpc.StateAuth(ctx(), req)
-			if err != nil {
-				return err
-			}
-
-			auth := resp.StateAuthSecret
-			authSet[string(auth)] = true
-			config.StoreMessage(index, actor, auth)
-		}
-
-		if len(authSet) > 1 {
-			return fmt.Errorf("Members do not agree on state auth secret")
-		}
-
-	case ActionStateProperties:
-		// Have the leader create the group
-		leader := config.ActorClients[ActorLeader]
-		cgReq := &pb.CreateGroupRequest{
-			GroupId:          []byte("group"),
-			CipherSuite:      config.CipherSuite,
-			EncryptHandshake: config.EncryptHandshake,
-			Identity:         []byte(ActorLeader),
-		}
-		cgResp, err := leader.rpc.CreateGroup(ctx(), cgReq)
-		if err != nil {
-			return fmt.Errorf("CreateGroup: %s %v", leader.name, err)
-		}
-
-		config.stateID[ActorLeader] = cgResp.StateId
-
-		// Get KeyPackages from each client, generate Add Proposals
-		adds := make([][]byte, 0, len(config.ActorClients)-1)
-		for actor, client := range config.ActorClients {
-			// Get a KeyPackage
-			kpReq := &pb.CreateKeyPackageRequest{
-				CipherSuite: config.CipherSuite,
-				Identity:    []byte(actor),
-			}
-			kpResp, err := client.rpc.CreateKeyPackage(ctx(), kpReq)
-			if err != nil {
-				return fmt.Errorf("CreateKeyPackage: %s %v", client.name, err)
-			}
-
-			config.transactionID[actor] = kpResp.TransactionId
-
-			// Have the leader generate an Add Proposal
-			addReq := &pb.AddProposalRequest{
-				StateId:    config.stateID[ActorLeader],
-				KeyPackage: kpResp.KeyPackage,
-			}
-			addResp, err := leader.rpc.AddProposal(ctx(), addReq)
-			if err != nil {
-				return fmt.Errorf("AddProposal: %s %v", client.name, err)
-			}
-
-			adds = append(adds, addResp.Proposal)
-		}
-
-		// Have the leader generate and handle a Commit
-		commitReq := &pb.CommitRequest{
-			StateId: config.stateID[ActorLeader],
-			ByValue: adds,
-		}
-		commitResp, err := leader.rpc.Commit(ctx(), commitReq)
-		if err != nil {
-			return fmt.Errorf("Commit: %s %v", leader.name, err)
-		}
-
-		handleReq := &pb.HandleCommitRequest{
-			StateId: config.stateID[ActorLeader],
-			Commit:  commitResp.Commit,
-		}
-		handleResp, err := leader.rpc.HandleCommit(ctx(), handleReq)
-		if err != nil {
-			return fmt.Errorf("HandleCommit: %s %v", leader.name, err)
-		}
-
-		config.stateID[step.Actor] = handleResp.StateId
-
-		// Have the other participants handle the Welcome
-		for actor, client := range config.ActorClients {
-			// Get a KeyPackage
-			joinReq := &pb.JoinGroupRequest{
-				TransactionId:    config.transactionID[actor],
-				Welcome:          commitResp.Welcome,
-				EncryptHandshake: config.EncryptHandshake,
-				Identity:         []byte(actor),
-			}
-			joinResp, err := client.rpc.JoinGroup(ctx(), joinReq)
-			if err != nil {
-				return fmt.Errorf("JoinGroup: %s %v", client.name, err)
-			}
-
-			config.stateID[actor] = joinResp.StateId
-		}
-
-		// Verify that everyone produces the same derived values as the leader
-
-		// XXX(RLB): We cannot compare PublicGroupState for equality, because there
-		// are randomized signature algorithms.
-
-		authReq := &pb.StateAuthRequest{StateId: config.stateID[ActorLeader]}
-		authResp, err := leader.rpc.StateAuth(ctx(), authReq)
-		if err != nil {
-			return fmt.Errorf("StateAuth: %s %v", leader.name, err)
-		}
-
-		expReq := &pb.ExportRequest{
-			StateId:   config.stateID[ActorLeader],
-			Label:     "interop test",
-			Context:   []byte{1, 2, 3, 4},
-			KeyLength: 32,
-		}
-		expResp, err := leader.rpc.Export(ctx(), expReq)
-		if err != nil {
-			return fmt.Errorf("Export: %s %v", leader.name, err)
-		}
-
-		leaderStateAuth := string(authResp.StateAuthSecret)
-		leaderExport := string(expResp.ExportedSecret)
-		for actor, client := range config.ActorClients {
-			authReq.StateId = config.stateID[actor]
-			authResp, err := client.rpc.StateAuth(ctx(), authReq)
-			if err != nil {
-				return fmt.Errorf("StateAuth: %s %v", client.name, err)
-			}
-
-			expReq.StateId = config.stateID[actor]
-			expResp, err := client.rpc.Export(ctx(), expReq)
-			if err != nil {
-				return fmt.Errorf("StateAuth: %s %v", client.name, err)
-			}
-
-			if string(authResp.StateAuthSecret) != leaderStateAuth {
-				return fmt.Errorf("StateAuthSecret value: %s", client.name)
-			}
-
-			if string(expResp.ExportedSecret) != leaderExport {
-				return fmt.Errorf("ExportedSecret value: %s", client.name)
-			}
-		}
-
-		// TODO Verify that everyone can encrypt and be decrypted by the others
-		for actor, client := range config.ActorClients {
-			message := []byte(fmt.Sprintf("hello from %s!", actor))
-
-			encReq := &pb.ProtectRequest{
-				StateId:         config.stateID[actor],
-				ApplicationData: message,
-			}
-			encResp, err := client.rpc.Protect(ctx(), encReq)
-			if err != nil {
-				return fmt.Errorf("Protect: %s %v", client.name, err)
-			}
-
-			for otherActor, otherClient := range config.ActorClients {
-				if actor == otherActor {
-					// Don't test loopback
-					continue
-				}
-
-				decReq := &pb.UnprotectRequest{
-					StateId:    config.stateID[otherActor],
-					Ciphertext: encResp.Ciphertext,
-				}
-				decResp, err := otherClient.rpc.Unprotect(ctx(), decReq)
-				if err != nil {
-					return fmt.Errorf("Unprotect: %s %v", client.name, err)
-				}
-
-				if string(decResp.ApplicationData) != string(message) {
-					return fmt.Errorf("Unprotect value: %s", otherClient.name)
-				}
-			}
-		}
-
 	default:
 		return fmt.Errorf("Unknown action: %s", step.Action)
 	}
@@ -836,37 +651,6 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	}
 
 	return result
-}
-
-func (p *ClientPool) AllClientsForEachSuite() []ScriptActorConfig {
-	configSize := 2 * len(p.suiteSupport)
-
-	configs := make([]ScriptActorConfig, 0, configSize)
-	for suite, clients := range p.suiteSupport {
-		for _, encrypt := range []bool{true, false} {
-			config := ScriptActorConfig{
-				CipherSuite:      suite,
-				EncryptHandshake: encrypt,
-				ActorClients:     map[string]*Client{},
-			}
-
-			first := true
-			for i := range clients {
-				client := p.clients[clients[i]]
-				config.ActorClients[client.name] = client
-
-				// Assign the first client as the leader as well as being a member
-				if first {
-					config.ActorClients[ActorLeader] = client
-					first = false
-				}
-			}
-
-			configs = append(configs, config)
-		}
-	}
-
-	return configs
 }
 
 func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite int, hsMode HandshakeMode) []ScriptActorConfig {
@@ -930,14 +714,9 @@ func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite 
 
 func (p *ClientPool) RunScript(name string, clientMode ClientMode, suite int, hsMode HandshakeMode, script Script) ScriptResults {
 	actors := script.Actors()
-
 	configs := p.ScriptMatrix(actors, clientMode, suite, hsMode)
-	if name == ScriptStateProperties {
-		configs = p.AllClientsForEachSuite()
-	}
 
 	results := make(ScriptResults, 0, len(configs))
-
 	for _, config := range configs {
 		result := config.Run(script)
 		results = append(results, result)
