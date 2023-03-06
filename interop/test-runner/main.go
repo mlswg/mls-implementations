@@ -23,11 +23,16 @@ import (
 // / Configuration
 // /
 type ClientMode string
+type HandshakeMode string
 type ScriptAction string
 
 const (
-	ModeAllCombinations ClientMode = "allCombinations"
-	ModeRandom          ClientMode = "random"
+	ClientModeAll    ClientMode = "allCombinations"
+	ClientModeRandom ClientMode = "random"
+
+	HandshakeModeAll     HandshakeMode = "all"
+	HandshakeModePrivate HandshakeMode = "private"
+	HandshakeModePublic  HandshakeMode = "public"
 
 	ActionCreateGroup         ScriptAction = "createGroup"
 	ActionCreateKeyPackage    ScriptAction = "createKeyPackage"
@@ -833,53 +838,6 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	return result
 }
 
-// Returns all possible assignments of clients to actors
-func (p *ClientPool) AllCombinations(actors []string) []ScriptActorConfig {
-	configs := []ScriptActorConfig{}
-	for suite, clients := range p.suiteSupport {
-		for _, combo := range combinations(len(clients), len(actors)) {
-			for _, encrypt := range []bool{true, false} {
-				config := ScriptActorConfig{
-					CipherSuite:      suite,
-					EncryptHandshake: encrypt,
-					ActorClients:     map[string]*Client{},
-				}
-
-				for i := range actors {
-					config.ActorClients[actors[i]] = p.clients[combo[i]]
-				}
-
-				configs = append(configs, config)
-			}
-		}
-	}
-
-	return configs
-}
-
-// Chooses a random assignment of clients to actors per mutually supported ciphersuite
-func (p *ClientPool) RandomCombination(actors []string) []ScriptActorConfig {
-	configs := []ScriptActorConfig{}
-	for suite, clients := range p.suiteSupport {
-		for _, encrypt := range []bool{true, false} {
-			config := ScriptActorConfig{
-				CipherSuite:      suite,
-				EncryptHandshake: encrypt,
-				ActorClients:     map[string]*Client{},
-			}
-
-			combo := randomCombination(len(clients), len(actors))
-			for i := range actors {
-				config.ActorClients[actors[i]] = p.clients[combo[i]]
-			}
-
-			configs = append(configs, config)
-		}
-	}
-
-	return configs
-}
-
 func (p *ClientPool) AllClientsForEachSuite() []ScriptActorConfig {
 	configSize := 2 * len(p.suiteSupport)
 
@@ -911,21 +869,69 @@ func (p *ClientPool) AllClientsForEachSuite() []ScriptActorConfig {
 	return configs
 }
 
-func (p *ClientPool) RunScript(name string, mode ClientMode, script Script) ScriptResults {
-	actors := script.Actors()
-
-	var configs []ScriptActorConfig
-	switch mode {
-	case ModeAllCombinations:
-		configs = p.AllCombinations(actors)
-
-	case ModeRandom:
-		configs = p.RandomCombination(actors)
-
-	default:
-		panic(fmt.Sprintf("Invalid mode: %s", mode))
+func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite int, hsMode HandshakeMode) []ScriptActorConfig {
+	suite32 := uint32(suite)
+	suites := []uint32{}
+	if suite == 0 {
+		suites = []uint32{}
+		for suite := range p.suiteSupport {
+			suites = append(suites, suite)
+		}
+	} else if _, ok := p.suiteSupport[suite32]; ok {
+		suites = []uint32{suite32}
+	} else {
+		panic(fmt.Sprintf("Unsupported ciphersuite: %d", suite))
 	}
 
+	encryptOptions := []bool{true, false}
+	switch hsMode {
+	case HandshakeModeAll:
+		// Default
+
+	case HandshakeModePrivate:
+		encryptOptions = []bool{true}
+
+	case HandshakeModePublic:
+		encryptOptions = []bool{false}
+	}
+
+	configs := []ScriptActorConfig{}
+	for _, suite := range suites {
+		clients := p.suiteSupport[suite]
+
+		for _, encrypt := range encryptOptions {
+			combos := [][]int{}
+			switch clientMode {
+			case ClientModeAll:
+				combos = combinations(len(clients), len(actors))
+
+			case ClientModeRandom:
+				combos = [][]int{randomCombination(len(clients), len(actors))}
+			}
+
+			for _, combo := range combos {
+				config := ScriptActorConfig{
+					CipherSuite:      suite,
+					EncryptHandshake: encrypt,
+					ActorClients:     map[string]*Client{},
+				}
+
+				for i := range actors {
+					config.ActorClients[actors[i]] = p.clients[combo[i]]
+				}
+
+				configs = append(configs, config)
+			}
+		}
+	}
+
+	return configs
+}
+
+func (p *ClientPool) RunScript(name string, clientMode ClientMode, suite int, hsMode HandshakeMode, script Script) ScriptResults {
+	actors := script.Actors()
+
+	configs := p.ScriptMatrix(actors, clientMode, suite, hsMode)
 	if name == ScriptStateProperties {
 		configs = p.AllClientsForEachSuite()
 	}
@@ -959,12 +965,18 @@ var (
 	clientsOpt stringListFlag
 	configOpt  string
 	randomOpt  bool
+	suiteOpt   int
+	privateOpt bool
+	publicOpt  bool
 )
 
 func init() {
 	flag.Var(&clientsOpt, "client", "host:port for a client")
 	flag.StringVar(&configOpt, "config", "config.json", "config file name")
 	flag.BoolVar(&randomOpt, "random", false, "run a random assignment of clients to roles")
+	flag.IntVar(&suiteOpt, "suite", 0, "only run tests for a single ciphersuite")
+	flag.BoolVar(&privateOpt, "private", false, "only run tests with handshake messages as PrivateMessage")
+	flag.BoolVar(&publicOpt, "public", false, "only run tests with handshake messages as PublicMessage")
 	flag.Parse()
 }
 
@@ -981,10 +993,17 @@ var (
 )
 
 func main() {
-	// Determine the operating mode (full combinatorial by default)
-	mode := ModeAllCombinations
+	// Determine the operating modes
+	clientMode := ClientModeAll
 	if randomOpt {
-		mode = ModeRandom
+		clientMode = ClientModeRandom
+	}
+
+	hsMode := HandshakeModeAll
+	if privateOpt && !publicOpt {
+		hsMode = HandshakeModePrivate
+	} else if !privateOpt && publicOpt {
+		hsMode = HandshakeModePublic
 	}
 
 	// Load and parse the config
@@ -1008,7 +1027,7 @@ func main() {
 		Scripts: map[string]ScriptResults{},
 	}
 	for name, script := range config.Scripts {
-		results.Scripts[name] = clientPool.RunScript(name, mode, script)
+		results.Scripts[name] = clientPool.RunScript(name, clientMode, suiteOpt, hsMode, script)
 	}
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")
