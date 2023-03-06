@@ -1,8 +1,19 @@
-// Inputs: 
-// * config.json
-// * transcript.json
-// * test name => steps, testCase
-// * actor name
+// Convert a transcript of an active test to a passive client test vector file
+//
+// Usage: node active_to_passive.js config.json trasncript.json >test-vector.json
+//
+// The file <config.json> should be in the format taken as input by `test-runner`.
+// The file <transcript.json> should be in the format output by `test-runner`.
+// The resulting test vector file is written to stdout.
+//
+// For each test case (combination of clients / encryption / ciphersuite), and
+// for each client that joins via Welcome in that test case, the script emits a
+// passive test vector that covers:
+// 
+// 1. The Welcome that adds the client to the group
+// 2. Further commits that the client is instructed to handle in the test script
+// 3. ... until the first time the client emits a message (since it is no longer passive)
+
 const fs = require('fs');
 
 // Load the required files
