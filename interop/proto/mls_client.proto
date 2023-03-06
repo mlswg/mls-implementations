@@ -85,6 +85,7 @@ message JoinGroupRequest {
 
 message JoinGroupResponse { 
   uint32 state_id = 1;
+  bytes epoch_authenticator = 2;
 }
 
 // rpc ExternalJoin

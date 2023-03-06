@@ -372,6 +372,15 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
+		epochAuthenticator, err := config.GetMessage(params.Welcome, "epoch_authenticator")
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+			return fmt.Errorf("Epoch authenticator mismatch %x != %x", resp.EpochAuthenticator, epochAuthenticator)
+		}
+
 		config.stateID[step.Actor] = resp.StateId
 
 	case ActionExternalJoin:
@@ -594,7 +603,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
-			return fmt.Errorf("Epoch authenticator mismatch")
+			return fmt.Errorf("Epoch authenticator mismatch %x != %x", resp.EpochAuthenticator, epochAuthenticator)
 		}
 
 	case ActionHandlePendingCommit:
