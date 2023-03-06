@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -21,9 +22,18 @@ import (
 // /
 // / Configuration
 // /
+type ClientMode string
+type HandshakeMode string
 type ScriptAction string
 
 const (
+	ClientModeAll    ClientMode = "allCombinations"
+	ClientModeRandom ClientMode = "random"
+
+	HandshakeModeAll     HandshakeMode = "all"
+	HandshakeModePrivate HandshakeMode = "private"
+	HandshakeModePublic  HandshakeMode = "public"
+
 	ActionCreateGroup         ScriptAction = "createGroup"
 	ActionCreateKeyPackage    ScriptAction = "createKeyPackage"
 	ActionJoinGroup           ScriptAction = "joinGroup"
@@ -130,7 +140,7 @@ func (s Script) Actors() []string {
 }
 
 type RunConfig struct {
-	Clients []string          `json:"clients"`
+	Mode    ClientMode        `json:"mode",omitempty`
 	Scripts map[string]Script `json:"scripts",omitempty`
 }
 
@@ -235,6 +245,14 @@ func (p *ClientPool) Close() {
 	for _, c := range p.clients {
 		c.conn.Close()
 	}
+}
+
+func randomCombination(vals, slots int) []int {
+	combo := make([]int, slots)
+	for i := range combo {
+		combo[i] = rand.Intn(vals)
+	}
+	return combo
 }
 
 func combinations(vals, slots int) [][]int {
@@ -820,31 +838,6 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	return result
 }
 
-func (p *ClientPool) ScriptMatrix(actors []string) []ScriptActorConfig {
-	configSize := 2 * len(p.suiteSupport) * len(p.clients)
-
-	configs := make([]ScriptActorConfig, 0, configSize)
-	for suite, clients := range p.suiteSupport {
-		for _, combo := range combinations(len(clients), len(actors)) {
-			for _, encrypt := range []bool{true, false} {
-				config := ScriptActorConfig{
-					CipherSuite:      suite,
-					EncryptHandshake: encrypt,
-					ActorClients:     map[string]*Client{},
-				}
-
-				for i := range actors {
-					config.ActorClients[actors[i]] = p.clients[combo[i]]
-				}
-
-				configs = append(configs, config)
-			}
-		}
-	}
-
-	return configs
-}
-
 func (p *ClientPool) AllClientsForEachSuite() []ScriptActorConfig {
 	configSize := 2 * len(p.suiteSupport)
 
@@ -876,10 +869,69 @@ func (p *ClientPool) AllClientsForEachSuite() []ScriptActorConfig {
 	return configs
 }
 
-func (p *ClientPool) RunScript(name string, script Script) ScriptResults {
+func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite int, hsMode HandshakeMode) []ScriptActorConfig {
+	suite32 := uint32(suite)
+	suites := []uint32{}
+	if suite == 0 {
+		suites = []uint32{}
+		for suite := range p.suiteSupport {
+			suites = append(suites, suite)
+		}
+	} else if _, ok := p.suiteSupport[suite32]; ok {
+		suites = []uint32{suite32}
+	} else {
+		panic(fmt.Sprintf("Unsupported ciphersuite: %d", suite))
+	}
+
+	encryptOptions := []bool{true, false}
+	switch hsMode {
+	case HandshakeModeAll:
+		// Default
+
+	case HandshakeModePrivate:
+		encryptOptions = []bool{true}
+
+	case HandshakeModePublic:
+		encryptOptions = []bool{false}
+	}
+
+	configs := []ScriptActorConfig{}
+	for _, suite := range suites {
+		clients := p.suiteSupport[suite]
+
+		for _, encrypt := range encryptOptions {
+			combos := [][]int{}
+			switch clientMode {
+			case ClientModeAll:
+				combos = combinations(len(clients), len(actors))
+
+			case ClientModeRandom:
+				combos = [][]int{randomCombination(len(clients), len(actors))}
+			}
+
+			for _, combo := range combos {
+				config := ScriptActorConfig{
+					CipherSuite:      suite,
+					EncryptHandshake: encrypt,
+					ActorClients:     map[string]*Client{},
+				}
+
+				for i := range actors {
+					config.ActorClients[actors[i]] = p.clients[combo[i]]
+				}
+
+				configs = append(configs, config)
+			}
+		}
+	}
+
+	return configs
+}
+
+func (p *ClientPool) RunScript(name string, clientMode ClientMode, suite int, hsMode HandshakeMode, script Script) ScriptResults {
 	actors := script.Actors()
 
-	configs := p.ScriptMatrix(actors)
+	configs := p.ScriptMatrix(actors, clientMode, suite, hsMode)
 	if name == ScriptStateProperties {
 		configs = p.AllClientsForEachSuite()
 	}
@@ -897,12 +949,34 @@ func (p *ClientPool) RunScript(name string, script Script) ScriptResults {
 // /
 // / Main logic
 // /
+
+type stringListFlag []string
+
+func (i *stringListFlag) String() string {
+	return "repeated options"
+}
+
+func (i *stringListFlag) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 var (
-	configOpt string
+	clientsOpt stringListFlag
+	configOpt  string
+	randomOpt  bool
+	suiteOpt   int
+	privateOpt bool
+	publicOpt  bool
 )
 
 func init() {
+	flag.Var(&clientsOpt, "client", "host:port for a client")
 	flag.StringVar(&configOpt, "config", "config.json", "config file name")
+	flag.BoolVar(&randomOpt, "random", false, "run a random assignment of clients to roles")
+	flag.IntVar(&suiteOpt, "suite", 0, "only run tests for a single ciphersuite")
+	flag.BoolVar(&privateOpt, "private", false, "only run tests with handshake messages as PrivateMessage")
+	flag.BoolVar(&publicOpt, "public", false, "only run tests with handshake messages as PublicMessage")
 	flag.Parse()
 }
 
@@ -919,6 +993,19 @@ var (
 )
 
 func main() {
+	// Determine the operating modes
+	clientMode := ClientModeAll
+	if randomOpt {
+		clientMode = ClientModeRandom
+	}
+
+	hsMode := HandshakeModeAll
+	if privateOpt && !publicOpt {
+		hsMode = HandshakeModePrivate
+	} else if !privateOpt && publicOpt {
+		hsMode = HandshakeModePublic
+	}
+
 	// Load and parse the config
 	jsonFile, err := os.Open(configOpt)
 	chk("Failure to open config file", err)
@@ -931,7 +1018,7 @@ func main() {
 	chk("Failure to parse config file", err)
 
 	// Connect to clients
-	clientPool, err := NewClientPool(config.Clients)
+	clientPool, err := NewClientPool(clientsOpt)
 	chk("Failure to conenct to clients", err)
 	defer clientPool.Close()
 
@@ -940,7 +1027,7 @@ func main() {
 		Scripts: map[string]ScriptResults{},
 	}
 	for name, script := range config.Scripts {
-		results.Scripts[name] = clientPool.RunScript(name, script)
+		results.Scripts[name] = clientPool.RunScript(name, clientMode, suiteOpt, hsMode, script)
 	}
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")
