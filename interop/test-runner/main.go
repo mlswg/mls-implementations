@@ -42,6 +42,7 @@ const (
 	ActionAddProposal         ScriptAction = "addProposal"
 	ActionUpdateProposal      ScriptAction = "updateProposal"
 	ActionRemoveProposal      ScriptAction = "removeProposal"
+	ActionFullCommit          ScriptAction = "fullCommit"
 	ActionCommit              ScriptAction = "commit"
 	ActionHandleCommit        ScriptAction = "handleCommit"
 	ActionHandlePendingCommit ScriptAction = "handlePendingCommit"
@@ -76,6 +77,13 @@ type AddProposalStepParams struct {
 
 type RemoveProposalStepParams struct {
 	Removed string `json:"removed"`
+}
+
+type FullCommitStepParams struct {
+	ByReference []int    `json:"byReference"`
+	ByValue     []int    `json:"byValue"`
+	Members     []string `json:"members"`
+	Joiners     []string `json:"joiners"`
 }
 
 type CommitStepParams struct {
@@ -474,6 +482,103 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
+	case ActionFullCommit:
+		client := config.ActorClients[step.Actor]
+		var params FullCommitStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		// Create the Commit [ActionCommit]
+		byRef := make([][]byte, len(params.ByReference))
+		for i, ix64 := range params.ByReference {
+			byRef[i], err = config.GetMessage(int(ix64), "proposal")
+			if err != nil {
+				return err
+			}
+		}
+
+		byVal := make([][]byte, len(params.ByValue))
+		for i, ix64 := range params.ByValue {
+			byVal[i], err = config.GetMessage(int(ix64), "proposal")
+			if err != nil {
+				return err
+			}
+		}
+
+		commitReq := &pb.CommitRequest{
+			StateId:     config.stateID[step.Actor],
+			ByReference: byRef,
+			ByValue:     byVal,
+		}
+		commitResp, err := client.rpc.Commit(ctx(), commitReq)
+		if err != nil {
+			return err
+		}
+
+		// Apply it at the committer [ActionHandlePendingCommit]
+		epochAuthenticator := []byte{}
+		{
+			req := &pb.HandlePendingCommitRequest{
+				StateId: config.stateID[step.Actor],
+			}
+
+			resp, err := client.rpc.HandlePendingCommit(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			config.stateID[step.Actor] = resp.StateId
+			epochAuthenticator = resp.EpochAuthenticator
+		}
+
+		// Apply it at the other members [ActionHandleCommit]
+		for _, member := range params.Members {
+			client := config.ActorClients[member]
+			req := &pb.HandleCommitRequest{
+				StateId:  config.stateID[member],
+				Proposal: byRef,
+				Commit:   commitResp.Commit,
+			}
+			resp, err := client.rpc.HandleCommit(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
+			}
+
+			config.stateID[member] = resp.StateId
+		}
+
+		// Initialize the joiners [ActionJoinGroup]
+		for _, joiner := range params.Joiners {
+			txID, ok := config.transactionID[joiner]
+			if !ok {
+				return fmt.Errorf("Malformed step: No transaction for %s", joiner)
+			}
+
+			req := &pb.JoinGroupRequest{
+				TransactionId:    txID,
+				Welcome:          commitResp.Welcome,
+				EncryptHandshake: config.EncryptHandshake,
+				Identity:         []byte(joiner),
+			}
+
+			resp, err := client.rpc.JoinGroup(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+				return fmt.Errorf("Joiner [%s] failed to agree on epoch authenticator", joiner)
+			}
+
+			config.stateID[joiner] = resp.StateId
+		}
+
 	case ActionCommit:
 		client := config.ActorClients[step.Actor]
 		var params CommitStepParams
@@ -510,7 +615,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "commit", resp.Commit)
 		config.StoreMessage(index, "welcome", resp.Welcome)
-		config.StoreMessage(index, "epoch_authenticator", resp.EpochAuthenticator)
 
 	case ActionProtect:
 		client := config.ActorClients[step.Actor]
@@ -587,15 +691,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		config.stateID[step.Actor] = resp.StateId
-
-		epochAuthenticator, err := config.GetMessage(params.Commit, "epoch_authenticator")
-		if err != nil {
-			return err
-		}
-
-		if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
-			return fmt.Errorf("Epoch authenticator mismatch")
-		}
 
 	case ActionHandlePendingCommit:
 		client := config.ActorClients[step.Actor]
