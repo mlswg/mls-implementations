@@ -34,20 +34,22 @@ const (
 	HandshakeModePrivate HandshakeMode = "private"
 	HandshakeModePublic  HandshakeMode = "public"
 
-	ActionCreateGroup         ScriptAction = "createGroup"
-	ActionCreateKeyPackage    ScriptAction = "createKeyPackage"
-	ActionJoinGroup           ScriptAction = "joinGroup"
-	ActionExternalJoin        ScriptAction = "externalJoin"
-	ActionPublicGroupState    ScriptAction = "publicGroupState"
-	ActionAddProposal         ScriptAction = "addProposal"
-	ActionUpdateProposal      ScriptAction = "updateProposal"
-	ActionRemoveProposal      ScriptAction = "removeProposal"
-	ActionFullCommit          ScriptAction = "fullCommit"
-	ActionCommit              ScriptAction = "commit"
-	ActionHandleCommit        ScriptAction = "handleCommit"
-	ActionHandlePendingCommit ScriptAction = "handlePendingCommit"
-	ActionProtect             ScriptAction = "protect"
-	ActionUnprotect           ScriptAction = "unprotect"
+	ActionCreateGroup          ScriptAction = "createGroup"
+	ActionCreateKeyPackage     ScriptAction = "createKeyPackage"
+	ActionJoinGroup            ScriptAction = "joinGroup"
+	ActionExternalJoin         ScriptAction = "externalJoin"
+	ActionInstallExternalPSK   ScriptAction = "installExternalPSK"
+	ActionPublicGroupState     ScriptAction = "publicGroupState"
+	ActionAddProposal          ScriptAction = "addProposal"
+	ActionUpdateProposal       ScriptAction = "updateProposal"
+	ActionRemoveProposal       ScriptAction = "removeProposal"
+	ActionPreSharedKeyProposal ScriptAction = "preSharedKeyProposal"
+	ActionFullCommit           ScriptAction = "fullCommit"
+	ActionCommit               ScriptAction = "commit"
+	ActionHandleCommit         ScriptAction = "handleCommit"
+	ActionHandlePendingCommit  ScriptAction = "handlePendingCommit"
+	ActionProtect              ScriptAction = "protect"
+	ActionUnprotect            ScriptAction = "unprotect"
 
 	TimeoutSeconds = 120
 )
@@ -66,6 +68,10 @@ type ExternalJoinStepParams struct {
 	PublicGroupState int `json:"publicGroupState"`
 }
 
+type InstallExternalPSKStepParams struct {
+	Clients []string `json:"clients"`
+}
+
 type AddProposalStepParams struct {
 	KeyPackage int `json:"keyPackage"`
 }
@@ -74,11 +80,17 @@ type RemoveProposalStepParams struct {
 	Removed string `json:"removed"`
 }
 
+type PreSharedKeyProposalStepParams struct {
+	PSK int `json:"psk"`
+}
+
 type FullCommitStepParams struct {
-	ByReference []int    `json:"byReference"`
-	ByValue     []int    `json:"byValue"`
-	Members     []string `json:"members"`
-	Joiners     []string `json:"joiners"`
+	ByReference  []int    `json:"byReference"`
+	ByValue      []int    `json:"byValue"`
+	Members      []string `json:"members"`
+	Joiners      []string `json:"joiners"`
+	ForcePath    bool     `json:"force_path"`
+	ExternalTree bool     `json:"external_tree"`
 }
 
 type CommitStepParams struct {
@@ -406,6 +418,42 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		config.stateID[step.Actor] = resp.StateId
 		config.StoreMessage(index, "commit", resp.Commit)
 
+	case ActionInstallExternalPSK:
+		var params InstallExternalPSKStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		pskID := make([]byte, 32)
+		rand.Read(pskID)
+		config.StoreMessage(index, "psk_id", pskID)
+
+		pskSecret := make([]byte, 32)
+		rand.Read(pskSecret)
+		config.StoreMessage(index, "psk_secret", pskSecret)
+
+		for _, clientName := range params.Clients {
+			client := config.ActorClients[clientName]
+
+			id := uint32(0)
+			if stateID, ok := config.stateID[clientName]; ok {
+				id = stateID
+			} else if txID, ok := config.transactionID[clientName]; ok {
+				id = txID
+			}
+
+			req := &pb.StorePSKRequest{
+				StateOrTransactionId: id,
+				PskId:                pskID,
+				PskSecret:            pskSecret,
+			}
+			_, err := client.rpc.StorePSK(ctx(), req)
+			if err != nil {
+				return err
+			}
+		}
+
 	case ActionPublicGroupState:
 		client := config.ActorClients[step.Actor]
 
@@ -480,6 +528,30 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
+	case ActionPreSharedKeyProposal:
+		client := config.ActorClients[step.Actor]
+		var params PreSharedKeyProposalStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		pskID, err := config.GetMessage(params.PSK, "psk_id")
+		if err != nil {
+			return err
+		}
+
+		req := &pb.PSKProposalRequest{
+			StateId: config.stateID[step.Actor],
+			PskId:   pskID,
+		}
+		resp, err := client.rpc.PSKProposal(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "proposal", resp.Proposal)
+
 	case ActionFullCommit:
 		client := config.ActorClients[step.Actor]
 		var params FullCommitStepParams
@@ -506,9 +578,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		commitReq := &pb.CommitRequest{
-			StateId:     config.stateID[step.Actor],
-			ByReference: byRef,
-			ByValue:     byVal,
+			StateId:      config.stateID[step.Actor],
+			ByReference:  byRef,
+			ByValue:      byVal,
+			ForcePath:    params.ForcePath,
+			ExternalTree: params.ExternalTree,
 		}
 		commitResp, err := client.rpc.Commit(ctx(), commitReq)
 		if err != nil {
@@ -517,6 +591,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "welcome", commitResp.Welcome)
 		config.StoreMessage(index, "commit", commitResp.Commit)
+		config.StoreMessage(index, "ratchet_tree", commitResp.RatchetTree)
 
 		// Apply it at the committer [ActionHandlePendingCommit]
 		epochAuthenticator := []byte{}
@@ -568,6 +643,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			req := &pb.JoinGroupRequest{
 				TransactionId:    txID,
 				Welcome:          commitResp.Welcome,
+				RatchetTree:      commitResp.RatchetTree,
 				EncryptHandshake: config.EncryptHandshake,
 				Identity:         []byte(joiner),
 			}
