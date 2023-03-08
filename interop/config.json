@@ -6,16 +6,11 @@
           {"action": "addProposal", "actor": "alice", "keyPackage": 1},
           {"action": "createKeyPackage", "actor": "charlie"},
           {"action": "addProposal", "actor": "alice", "keyPackage": 3},
-          {"action": "commit", "actor": "alice", "byReference": [2, 4]},
-          {"action": "joinGroup", "actor": "bob", "welcome": 5},
-          {"action": "joinGroup", "actor": "charlie", "welcome": 5},
-          {"action": "handlePendingCommit", "actor": "alice"},
+          {"action": "fullCommit", "actor": "alice", "byReference": [2, 4], "joiners": ["bob", "charlie"]},
           {"action": "removeProposal", "actor": "charlie", "removed": "bob"},
-          {"action": "commit", "actor": "alice", "byReference": [9]},
-          {"action": "handleCommit", "actor": "charlie", "commit": 10, "byReference": [9]},
-          {"action": "handlePendingCommit", "actor": "alice"},
+          {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["charlie"]},
           {"action": "protect", "actor": "alice", "applicationData": "aGVsbG8="},
-          {"action": "unprotect", "actor": "charlie", "ciphertext": 13}
+          {"action": "unprotect", "actor": "charlie", "ciphertext": 8}
         ]
   }
 }
