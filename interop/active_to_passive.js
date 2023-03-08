@@ -33,8 +33,9 @@ for (let scriptName in config.scripts) {
 
   // Identify the actors that join via Welcome
   const steps = config.scripts[scriptName];
-  const passiveActors = steps.filter(step => step.action == "joinGroup")
-                             .map(step => step.actor);
+  const passiveActors = steps.filter(step => step.action == "fullCommit" && step.joiners)
+                             .map(step => step.joiners)
+                             .reduce((a, b) => a.concat(b));
 
   // Construct test cases from passive vantage points
   for (let testCase of transcript.scripts[scriptName]) {
@@ -53,38 +54,33 @@ console.log(JSON.stringify(passiveTests, null, 2));
 
 //////// Translation Logic //////////
 
-function activeToPassive(steps, testCase, actor) {
+function activeToPassive(rawSteps, testCase, actor) {
   // Identify where in the transcript we should look for relevant data
-  const my_steps = steps.map((step, i) => { step.transcriptIndex = i; return step; })
-                        .filter(step => step.actor == actor);
-  
-  if (my_steps.length == 0) {
-    console.warn("Unknown actor");
-    return;
-  }
-  
-  if (my_steps[0].action != "createKeyPackage" || 
-      my_steps[1].action != "joinGroup") {
-    console.warn("Actor did not join via Welcome");
+  const steps = rawSteps.map((step, i) => { step.transcriptIndex = i; return step; });
+  const kp_steps = steps.filter(step => step.action == "createKeyPackage" && step.actor == actor);
+  const join_steps = steps.filter(step => step.action == "fullCommit" && step.joiners && step.joiners.includes(actor));
+  const commit_steps = steps.filter(step => step.action == "fullCommit" && step.members && step.members.includes(actor));
+
+  if (kp_steps.length == 0 || join_steps.length == 0) {
+    console.warn("Actor did not join via Welcome", actor);
     return;
   }
   
   // Grab private data
   const passiveTest = {
-    cipher_suite: testCase.cipher_suite, // from transcript
+    cipher_suite: testCase.cipher_suite,
   };
   const transcript = testCase.transcript;
   
   // Grab private state from createKeyPackage step in transcript
-  const kpTranscript = transcript[my_steps[0].transcriptIndex];
+  const kpTranscript = transcript[kp_steps[0].transcriptIndex];
   passiveTest.key_package = kpTranscript.key_package;
   passiveTest.init_priv = kpTranscript.init_priv;
   passiveTest.encryption_priv = kpTranscript.encryption_priv;
   passiveTest.signature_priv = kpTranscript.signature_priv;
   
   // Grab welcome and epoch authenticator from joinGroup
-  const welcomeStep = my_steps[1];
-  const commitTranscript = transcript[welcomeStep.welcome];
+  const commitTranscript = transcript[join_steps[0].transcriptIndex];
   passiveTest.welcome = commitTranscript.welcome;
   passiveTest.initial_epoch_authenticator = commitTranscript.epoch_authenticator;
   
@@ -94,20 +90,8 @@ function activeToPassive(steps, testCase, actor) {
 
   // Grab Commits 
   passiveTest.epochs = [];
-  for (let i = 2; i < my_steps.length; i++) {
-    const step = my_steps[i];
-    const skipActions = ["unprotect"];
-    if (skipActions.includes(step.action)) {
-      continue;
-    }
-  
-    if (step.action != "handleCommit") {
-      // Stop if this member does anything active
-      console.info("stopping bc", step.action);
-      break;
-    }
-
-    const commitTranscript = transcript[step.commit];
+  for (let step of commit_steps) {
+    const commitTranscript = transcript[step.transcriptIndex];
     const proposals = step.byReference.map(i => transcript[i].proposal);
 
     passiveTest.epochs.push({
