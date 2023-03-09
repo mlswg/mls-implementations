@@ -94,8 +94,10 @@ type FullCommitStepParams struct {
 }
 
 type CommitStepParams struct {
-	ByReference []int `json:"byReference"`
-	ByValue     []int `json:"byValue"`
+	ByReference  []int `json:"byReference"`
+	ByValue      []int `json:"byValue"`
+	ForcePath    bool  `json:"force_path"`
+	ExternalTree bool  `json:"external_tree"`
 }
 
 type HandleCommitStepParams struct {
@@ -591,7 +593,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "welcome", commitResp.Welcome)
 		config.StoreMessage(index, "commit", commitResp.Commit)
-		config.StoreMessage(index, "ratchet_tree", commitResp.RatchetTree)
+		if !params.ExternalTree {
+			config.StoreMessage(index, "ratchet_tree", commitResp.RatchetTree)
+		}
 
 		// Apply it at the committer [ActionHandlePendingCommit]
 		epochAuthenticator := []byte{}
@@ -643,9 +647,12 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			req := &pb.JoinGroupRequest{
 				TransactionId:    txID,
 				Welcome:          commitResp.Welcome,
-				RatchetTree:      commitResp.RatchetTree,
 				EncryptHandshake: config.EncryptHandshake,
 				Identity:         []byte(joiner),
+			}
+
+			if params.ExternalTree {
+				req.RatchetTree = commitResp.RatchetTree
 			}
 
 			resp, err := client.rpc.JoinGroup(ctx(), req)
@@ -685,9 +692,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		req := &pb.CommitRequest{
-			StateId:     config.stateID[step.Actor],
-			ByReference: byRef,
-			ByValue:     byVal,
+			StateId:      config.stateID[step.Actor],
+			ByReference:  byRef,
+			ByValue:      byVal,
+			ForcePath:    params.ForcePath,
+			ExternalTree: params.ExternalTree,
 		}
 		resp, err := client.rpc.Commit(ctx(), req)
 		if err != nil {
@@ -696,6 +705,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "commit", resp.Commit)
 		config.StoreMessage(index, "welcome", resp.Welcome)
+		if !params.ExternalTree {
+			config.StoreMessage(index, "ratchet_tree", resp.RatchetTree)
+		}
 
 	case ActionProtect:
 		client := config.ActorClients[step.Actor]
