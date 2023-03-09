@@ -1,0 +1,33 @@
+{
+  "scripts": {
+    "no_path_secret": [
+          {"action": "createGroup", "actor": "alice"},
+          {"action": "createKeyPackage", "actor": "bob"},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 1},
+          {"action": "fullCommit", "actor": "alice", "byReference": [2], "joiners": ["bob"]}
+    ],
+
+    "with_path_secret": [
+          {"action": "createGroup", "actor": "alice"},
+          {"action": "createKeyPackage", "actor": "bob"},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 1},
+          {"action": "fullCommit", "actor": "alice", "byReference": [2], "joiners": ["bob"], "force_path": true}
+    ],
+
+    "with_psk": [
+          {"action": "createGroup", "actor": "alice"},
+          {"action": "createKeyPackage", "actor": "bob"},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 1},
+          {"action": "installExternalPSK", "clients": ["alice", "bob"]},
+          {"action": "preSharedKeyProposal", "actor": "alice", "psk": 3},
+          {"action": "fullCommit", "actor": "alice", "byReference": [2, 4], "joiners": ["bob"]}
+    ],
+
+    "with_external_tree": [
+          {"action": "createGroup", "actor": "alice"},
+          {"action": "createKeyPackage", "actor": "bob"},
+          {"action": "addProposal", "actor": "alice", "keyPackage": 1},
+          {"action": "fullCommit", "actor": "alice", "byReference": [2], "joiners": ["bob"], "external_tree": true}
+    ]
+  }
+}

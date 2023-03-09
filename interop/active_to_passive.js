@@ -57,11 +57,12 @@ console.log(JSON.stringify(passiveTests, null, 2));
 function activeToPassive(rawSteps, testCase, actor) {
   // Identify where in the transcript we should look for relevant data
   const steps = rawSteps.map((step, i) => { step.transcriptIndex = i; return step; });
-  const kp_steps = steps.filter(step => step.action == "createKeyPackage" && step.actor == actor);
-  const join_steps = steps.filter(step => step.action == "fullCommit" && step.joiners && step.joiners.includes(actor));
-  const commit_steps = steps.filter(step => step.action == "fullCommit" && step.members && step.members.includes(actor));
+  const kpSteps = steps.filter(step => step.action == "createKeyPackage" && step.actor == actor);
+  const pskSteps = steps.filter(step => step.action == "installExternalPSK" && step.clients && step.clients.includes(actor));
+  const joinSteps = steps.filter(step => step.action == "fullCommit" && step.joiners && step.joiners.includes(actor));
+  const commitSteps = steps.filter(step => step.action == "fullCommit" && step.members && step.members.includes(actor));
 
-  if (kp_steps.length == 0 || join_steps.length == 0) {
+  if (kpSteps.length == 0 || joinSteps.length == 0) {
     console.warn("Actor did not join via Welcome", actor);
     return;
   }
@@ -73,24 +74,34 @@ function activeToPassive(rawSteps, testCase, actor) {
   const transcript = testCase.transcript;
   
   // Grab private state from createKeyPackage step in transcript
-  const kpTranscript = transcript[kp_steps[0].transcriptIndex];
+  const kpTranscript = transcript[kpSteps[0].transcriptIndex];
   passiveTest.key_package = kpTranscript.key_package;
   passiveTest.init_priv = kpTranscript.init_priv;
   passiveTest.encryption_priv = kpTranscript.encryption_priv;
   passiveTest.signature_priv = kpTranscript.signature_priv;
   
-  // Grab welcome and epoch authenticator from joinGroup
-  const commitTranscript = transcript[join_steps[0].transcriptIndex];
-  passiveTest.welcome = commitTranscript.welcome;
-  passiveTest.initial_epoch_authenticator = commitTranscript.epoch_authenticator;
-  
-  // TODO Enable provisioning these fields
-  passiveTest.external_psks = [];
+  // Grab welcome, ratchet tree, and epoch authenticator from joinGroup
+  const joinTranscript = transcript[joinSteps[0].transcriptIndex];
+  passiveTest.welcome = joinTranscript.welcome;
+  passiveTest.initial_epoch_authenticator = joinTranscript.epoch_authenticator;
+
   passiveTest.ratchet_tree = null;
+  if (joinTranscript.ratchet_tree.length > 0) {
+    passiveTest.ratchet_tree = joinTranscript.ratchet_tree;
+  }
+  
+  // Grab any PSKs that were sent to this client
+  passiveTest.external_psks = pskSteps.map(step => transcript[step.transcriptIndex])
+    .map(txStep => { 
+      return {
+        psk_id: txStep.psk_id,
+        psk: txStep.psk_secret,
+      }; 
+    });
 
   // Grab Commits 
   passiveTest.epochs = [];
-  for (let step of commit_steps) {
+  for (let step of commitSteps) {
     const commitTranscript = transcript[step.transcriptIndex];
     const proposals = step.byReference.map(i => transcript[i].proposal);
 
