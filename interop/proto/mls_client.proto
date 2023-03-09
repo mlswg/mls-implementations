@@ -19,7 +19,7 @@ service MLSClient {
   rpc ExternalJoin(ExternalJoinRequest) returns (ExternalJoinResponse) {}
 
   // Operations using a group state
-  rpc PublicGroupState(PublicGroupStateRequest) returns (PublicGroupStateResponse) {}
+  rpc GroupInfo(GroupInfoRequest) returns (GroupInfoResponse) {}
   rpc StateAuth(StateAuthRequest) returns (StateAuthResponse) {}
   rpc Export(ExportRequest) returns (ExportResponse) {}
   rpc Protect(ProtectRequest) returns (ProtectResponse) {}
@@ -93,24 +93,35 @@ message JoinGroupResponse {
 }
 
 // rpc ExternalJoin
+message PreSharedKey {
+  bytes psk_id = 1;
+  bytes psk_secret = 2;
+}
+
 message ExternalJoinRequest {
-  bytes public_group_state = 1;
-  bool encrypt_handshake = 2;
-  bytes identity = 3;
+  bytes group_info = 1;
+  bytes ratchet_tree = 2;
+  bool encrypt_handshake = 3;
+  bytes identity = 4;
+  bool remove_prior = 5;
+  repeated PreSharedKey psks = 6;
 }
 
 message ExternalJoinResponse {
   uint32 state_id = 1;
   bytes commit = 2;
+  bytes epoch_authenticator = 3;
 }
 
-// rpc PublicGroupState
-message PublicGroupStateRequest {
+// rpc GroupInfo
+message GroupInfoRequest {
   uint32 state_id = 1;
+  bool external_tree = 2;
 }
 
-message PublicGroupStateResponse {
-  bytes public_group_state = 1;
+message GroupInfoResponse {
+  bytes group_info = 1;
+  bytes ratchet_tree = 2;
 }
 
 // rpc StateAuth
