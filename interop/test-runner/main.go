@@ -555,6 +555,8 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				return fmt.Errorf("Malformed step: No transaction for %s", joiner)
 			}
 
+			client := config.ActorClients[joiner]
+
 			req := &pb.JoinGroupRequest{
 				TransactionId:    txID,
 				Welcome:          commitResp.Welcome,
