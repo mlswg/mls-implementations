@@ -343,7 +343,10 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		config.transactionID[step.Actor] = resp.TransactionId
-		config.StoreMessage(index, "keyPackage", resp.KeyPackage)
+		config.StoreMessage(index, "key_package", resp.KeyPackage)
+		config.StoreMessage(index, "init_priv", resp.InitPriv)
+		config.StoreMessage(index, "encryption_priv", resp.EncryptionPriv)
+		config.StoreMessage(index, "signature_priv", resp.SignaturePriv)
 
 	case ActionJoinGroup:
 		client := config.ActorClients[step.Actor]
@@ -424,7 +427,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
-		keyPackage, err := config.GetMessage(params.KeyPackage, "keyPackage")
+		keyPackage, err := config.GetMessage(params.KeyPackage, "key_package")
 		if err != nil {
 			return err
 		}
@@ -512,6 +515,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
+		config.StoreMessage(index, "welcome", commitResp.Welcome)
+		config.StoreMessage(index, "commit", commitResp.Commit)
+
 		// Apply it at the committer [ActionHandlePendingCommit]
 		epochAuthenticator := []byte{}
 		{
@@ -527,6 +533,8 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			config.stateID[step.Actor] = resp.StateId
 			epochAuthenticator = resp.EpochAuthenticator
 		}
+
+		config.StoreMessage(index, "epoch_authenticator", epochAuthenticator)
 
 		// Apply it at the other members [ActionHandleCommit]
 		for _, member := range params.Members {
