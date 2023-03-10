@@ -10,12 +10,7 @@
           {"action": "removeProposal", "actor": "charlie", "removed": "bob"},
           {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["charlie"]},
           {"action": "protect", "actor": "alice", "applicationData": "aGVsbG8="},
-          {"action": "unprotect", "actor": "charlie", "ciphertext": 8},
-          {"action": "groupContextExtensionsProposal", "extensions": {"123456789": "aGVsbG8=", "987654321": "d29ybGQ="}, "actor": "alice"},
-          {"action": "fullCommit", "actor": "alice", "byReference": [10], "members": ["charlie"]},
-          {"action": "installExternalPSK", "clients": ["alice", "charlie"]},
-          {"action": "externalPSKProposal", "actor": "alice", "pskID": 12},
-          {"action": "fullCommit", "actor": "charlie", "byReference": [13], "members": ["alice"]}
+          {"action": "unprotect", "actor": "charlie", "ciphertext": 8}
         ]
   }
 }

@@ -684,7 +684,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		types := []uint32{}
 		data := [][]byte{}
 		for t, d := range params.Extensions {
-			fmt.Println("extension", t)
 			types = append(types, uint32(t))
 			data = append(data, []byte(d))
 		}
