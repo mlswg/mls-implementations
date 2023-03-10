@@ -1,78 +1,129 @@
 {
-      "scripts": {
-        "remove_from_self_and_others": [
-              {"action": "createGroup", "actor": "alice1"},
-              {"action": "createKeyPackage", "actor": "alice2"},
-              {"action": "createKeyPackage", "actor": "alice3"},
-              {"action": "createKeyPackage", "actor": "alice4"},
-              {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
-              {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
-              {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
-              {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
-              {"action": "removeProposal", "actor": "alice1", "removed": "alice4"},
-              {"action": "removeProposal", "actor": "alice2", "removed": "alice3"},
-              {"action": "fullCommit", "actor": "alice1", "byReference": [8, 9], "members": ["alice2"]}
-        ],
-    
-        "update_from_self_and_others": [
-          {"action": "createGroup", "actor": "alice1"},
-          {"action": "createKeyPackage", "actor": "alice2"},
-          {"action": "createKeyPackage", "actor": "alice3"},
-          {"action": "createKeyPackage", "actor": "alice4"},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
-          {"action": "updateProposal", "actor": "alice2"},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [8], "members": ["alice2", "alice3", "alice4"]}
-        ],
-    
-        "context_extensions_from_self_and_others": [
-          {"action": "createGroup", "actor": "alice1"},
-          {"action": "createKeyPackage", "actor": "alice2"},
-          {"action": "createKeyPackage", "actor": "alice3"},
-          {"action": "createKeyPackage", "actor": "alice4"},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
-          {"action": "groupContextExtensionsProposal", "extensions": {"123456789": "aGVsbG8=", "987654321": "d29ybGQ="}, "actor": "alice1"},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [8], "members": ["alice2", "alice3", "alice4"]},
-          {"action": "groupContextExtensionsProposal", "extensions": {}, "actor": "alice2"},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [10], "members": ["alice2", "alice3", "alice4"]}
-        ],
-    
-        "external_psk_self_and_others": [
-          {"action": "createGroup", "actor": "alice1"},
-          {"action": "createKeyPackage", "actor": "alice2"},
-          {"action": "createKeyPackage", "actor": "alice3"},
-          {"action": "createKeyPackage", "actor": "alice4"},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
-          {"action": "installExternalPSK", "clients": ["alice1", "alice2", "alice3", "alice4"]},
-          {"action": "installExternalPSK", "clients": ["alice1", "alice2", "alice3", "alice4"]},
-          {"action": "externalPSKProposal", "pskID": 8, "actor": "alice1"},
-          {"action": "externalPSKProposal", "pskID": 9, "actor": "alice2"},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [10, 11], "members": ["alice2", "alice3", "alice4"]}
-        ],
-    
-        "resumption_psk_self_and_others": [
-          {"action": "createGroup", "actor": "alice1"},
-          {"action": "createKeyPackage", "actor": "alice2"},
-          {"action": "createKeyPackage", "actor": "alice3"},
-          {"action": "createKeyPackage", "actor": "alice4"},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
-          {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
-          {"action": "fullCommit", "actor": "alice1", "members": ["alice2", "alice3", "alice4"]},
-          {"action": "resumptionPSKProposal", "epochID": 1, "actor": "alice1"},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [9], "members": ["alice2", "alice3", "alice4"]},
-          {"action": "resumptionPSKProposal", "epochID": 2, "actor": "alice2"},
-          {"action": "fullCommit", "actor": "alice1", "byReference": [11], "members": ["alice2", "alice3", "alice4"]}
-        ]
-      }
-    }
-    
+  "scripts": {
+    "add_from_self_and_others": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5], "joiners": ["alice2", "alice3"]},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice2", "keyPackage": 7},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [8], "members": ["alice2", "alice3"]}
+    ],
+
+    "remove_from_self_and_others": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
+      {"action": "removeProposal", "actor": "alice1", "removed": "alice4"},
+      {"action": "removeProposal", "actor": "alice2", "removed": "alice3"},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [8, 9], "members": ["alice2"]}
+    ],
+
+    "update_from_self_and_others": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
+      {"action": "updateProposal", "actor": "alice2"},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [8], "members": ["alice2", "alice3", "alice4"]}
+    ],
+
+    "context_extensions_from_self_and_others": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
+      {"action": "groupContextExtensionsProposal", "extensions": {"123456789": "aGVsbG8=", "987654321": "d29ybGQ="}, "actor": "alice1"},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [8], "members": ["alice2", "alice3", "alice4"]},
+      {"action": "groupContextExtensionsProposal", "extensions": {}, "actor": "alice2"},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [10], "members": ["alice2", "alice3", "alice4"]}
+    ],
+
+    "external_psk_self_and_others": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
+      {"action": "installExternalPSK", "clients": ["alice1", "alice2", "alice3", "alice4"]},
+      {"action": "installExternalPSK", "clients": ["alice1", "alice2", "alice3", "alice4"]},
+      {"action": "externalPSKProposal", "pskID": 8, "actor": "alice1"},
+      {"action": "externalPSKProposal", "pskID": 9, "actor": "alice2"},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [10, 11], "members": ["alice2", "alice3", "alice4"]}
+    ],
+
+    "resumption_psk_self_and_others": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
+      {"action": "fullCommit", "actor": "alice1", "members": ["alice2", "alice3", "alice4"]},
+      {"action": "resumptionPSKProposal", "epochID": 1, "actor": "alice1"},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [9], "members": ["alice2", "alice3", "alice4"]},
+      {"action": "resumptionPSKProposal", "epochID": 2, "actor": "alice2"},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [11], "members": ["alice2", "alice3", "alice4"]}
+    ],
+
+    "all_together_self": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
+      {"action": "fullCommit", "actor": "alice1", "members": ["alice2", "alice3", "alice4"]},
+      {"action": "installExternalPSK", "clients": ["alice1", "alice2", "alice3", "alice4"]},
+      {"action": "createKeyPackage", "actor": "alice5"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 10},
+      {"action": "removeProposal", "actor": "alice1", "removed": "alice4"},
+      {"action": "groupContextExtensionsProposal", "actor": "alice1", "extensions": {"123456789": "aGVsbG8=", "987654321": "d29ybGQ="}},
+      {"action": "externalPSKProposal", "actor": "alice1", "pskID": 9},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [11, 12, 13, 14], "members": ["alice2", "alice3"], "joiners": "alice5"}
+    ],
+
+    "all_together_others": [
+      {"action": "createGroup", "actor": "alice1"},
+      {"action": "createKeyPackage", "actor": "alice2"},
+      {"action": "createKeyPackage", "actor": "alice3"},
+      {"action": "createKeyPackage", "actor": "alice4"},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice1", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [4, 5, 6], "joiners": ["alice2", "alice3", "alice4"]},
+      {"action": "fullCommit", "actor": "alice1", "members": ["alice2", "alice3", "alice4"]},
+      {"action": "installExternalPSK", "clients": ["alice1", "alice2", "alice3", "alice4"]},
+      {"action": "createKeyPackage", "actor": "alice5"},
+      {"action": "addProposal", "actor": "alice2", "keyPackage": 10},
+      {"action": "removeProposal", "actor": "alice2", "removed": "alice4"},
+      {"action": "updateProposal", "actor": "alice2"},
+      {"action": "groupContextExtensionsProposal", "actor": "alice2", "extensions": {"123456789": "aGVsbG8=", "987654321": "d29ybGQ="}},
+      {"action": "externalPSKProposal", "actor": "alice2", "pskID": 9},
+      {"action": "fullCommit", "actor": "alice1", "byReference": [11, 12, 13, 14, 15], "members": ["alice2", "alice3"], "joiners": "alice5"}
+    ]
+  }
+}
