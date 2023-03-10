@@ -905,7 +905,7 @@ func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite 
 	return configs
 }
 
-func (p *ClientPool) RunScript(name string, clientMode ClientMode, suite int, hsMode HandshakeMode, script Script) ScriptResults {
+func (p *ClientPool) RunScript(name string, clientMode ClientMode, suite int, hsMode HandshakeMode, script Script, failFast bool) ScriptResults {
 	actors := script.Actors()
 	configs := p.ScriptMatrix(actors, clientMode, suite, hsMode)
 
@@ -913,6 +913,9 @@ func (p *ClientPool) RunScript(name string, clientMode ClientMode, suite int, hs
 	for _, config := range configs {
 		result := config.Run(script)
 		results = append(results, result)
+		if failFast && result.FailedStep != nil {
+			break
+		}
 	}
 
 	return results
@@ -940,6 +943,7 @@ var (
 	suiteOpt   int
 	privateOpt bool
 	publicOpt  bool
+	failFast   bool
 )
 
 func init() {
@@ -949,6 +953,7 @@ func init() {
 	flag.IntVar(&suiteOpt, "suite", 0, "only run tests for a single ciphersuite")
 	flag.BoolVar(&privateOpt, "private", false, "only run tests with handshake messages as PrivateMessage")
 	flag.BoolVar(&publicOpt, "public", false, "only run tests with handshake messages as PublicMessage")
+	flag.BoolVar(&failFast, "fail-fast", false, "abort after the first failure")
 	flag.Parse()
 }
 
@@ -991,7 +996,7 @@ func main() {
 
 	// Connect to clients
 	clientPool, err := NewClientPool(clientsOpt)
-	chk("Failure to conenct to clients", err)
+	chk("Failure to connect to clients", err)
 	defer clientPool.Close()
 
 	// Run scripts
@@ -999,7 +1004,7 @@ func main() {
 		Scripts: map[string]ScriptResults{},
 	}
 	for name, script := range config.Scripts {
-		results.Scripts[name] = clientPool.RunScript(name, clientMode, suiteOpt, hsMode, script)
+		results.Scripts[name] = clientPool.RunScript(name, clientMode, suiteOpt, hsMode, script, failFast)
 	}
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")
