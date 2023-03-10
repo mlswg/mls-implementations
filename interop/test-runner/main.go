@@ -43,7 +43,8 @@ const (
 	ActionAddProposal                    ScriptAction = "addProposal"
 	ActionUpdateProposal                 ScriptAction = "updateProposal"
 	ActionRemoveProposal                 ScriptAction = "removeProposal"
-	ActionPreSharedKeyProposal           ScriptAction = "preSharedKeyProposal"
+	ActionExternalPSKProposal            ScriptAction = "externalPSKProposal"
+	ActionResumptionPSKProposal          ScriptAction = "resumptionPSKProposal"
 	ActionGroupContextExtensionsProposal ScriptAction = "groupContextExtensionsProposal"
 	ActionFullCommit                     ScriptAction = "fullCommit"
 	ActionCommit                         ScriptAction = "commit"
@@ -89,8 +90,12 @@ type RemoveProposalStepParams struct {
 	Removed string `json:"removed"`
 }
 
-type PreSharedKeyProposalStepParams struct {
-	PSK int `json:"psk"`
+type ExternalPSKProposalStepParams struct {
+	PskId int `json:"pskID"`
+}
+
+type ResumptionPSKProposalStepParams struct {
+	EpochId int `json:"epochID"`
 }
 
 type GroupContextExtensionsProposalStepParams struct {
@@ -624,24 +629,43 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
-	case ActionPreSharedKeyProposal:
+	case ActionExternalPSKProposal:
 		client := config.ActorClients[step.Actor]
-		var params PreSharedKeyProposalStepParams
+		var params ExternalPSKProposalStepParams
 		err := json.Unmarshal(step.Raw, &params)
 		if err != nil {
 			return err
 		}
 
-		pskID, err := config.GetMessage(params.PSK, "psk_id")
+		pskID, err := config.GetMessage(params.PskId, "psk_id")
 		if err != nil {
 			return err
 		}
 
-		req := &pb.PSKProposalRequest{
+		req := &pb.ExternalPSKProposalRequest{
 			StateId: config.stateID[step.Actor],
 			PskId:   pskID,
 		}
-		resp, err := client.rpc.PSKProposal(ctx(), req)
+		resp, err := client.rpc.ExternalPSKProposal(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "proposal", resp.Proposal)
+
+	case ActionResumptionPSKProposal:
+		client := config.ActorClients[step.Actor]
+		var params ResumptionPSKProposalStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		req := &pb.ResumptionPSKProposalRequest{
+			StateId: config.stateID[step.Actor],
+			EpochId: uint64(params.EpochId),
+		}
+		resp, err := client.rpc.ResumptionPSKProposal(ctx(), req)
 		if err != nil {
 			return err
 		}

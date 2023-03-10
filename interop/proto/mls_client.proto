@@ -29,7 +29,8 @@ service MLSClient {
   rpc AddProposal(AddProposalRequest) returns (ProposalResponse) {}
   rpc UpdateProposal(UpdateProposalRequest) returns (ProposalResponse) {}
   rpc RemoveProposal(RemoveProposalRequest) returns (ProposalResponse) {}
-  rpc PSKProposal(PSKProposalRequest) returns (ProposalResponse) {}
+  rpc ExternalPSKProposal(ExternalPSKProposalRequest) returns (ProposalResponse) {}
+  rpc ResumptionPSKProposal(ResumptionPSKProposalRequest) returns (ProposalResponse) {}
   rpc ReInitProposal(ReInitProposalRequest) returns (ProposalResponse) {}
   rpc GroupContextExtensionsProposal(GroupContextExtensionsProposalRequest) returns (ProposalResponse) {}
   
@@ -196,10 +197,16 @@ message RemoveProposalRequest {
   bytes removed_id = 2;
 }
 
-// rpc PSKProposal
-message PSKProposalRequest {
+// rpc ExternalPSKProposal
+message ExternalPSKProposalRequest {
   uint32 state_id = 1;
   bytes psk_id = 2;
+}
+
+// rpc ResumptionPSKProposal
+message ResumptionPSKProposalRequest {
+  uint32 state_id = 1;
+  uint64 epoch_id = 2;
 }
 
 // rpc ReInitProposal
