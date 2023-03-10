@@ -34,22 +34,23 @@ const (
 	HandshakeModePrivate HandshakeMode = "private"
 	HandshakeModePublic  HandshakeMode = "public"
 
-	ActionCreateGroup          ScriptAction = "createGroup"
-	ActionCreateKeyPackage     ScriptAction = "createKeyPackage"
-	ActionJoinGroup            ScriptAction = "joinGroup"
-	ActionExternalJoin         ScriptAction = "externalJoin"
-	ActionInstallExternalPSK   ScriptAction = "installExternalPSK"
-	ActionGroupInfo            ScriptAction = "groupInfo"
-	ActionAddProposal          ScriptAction = "addProposal"
-	ActionUpdateProposal       ScriptAction = "updateProposal"
-	ActionRemoveProposal       ScriptAction = "removeProposal"
-	ActionPreSharedKeyProposal ScriptAction = "preSharedKeyProposal"
-	ActionFullCommit           ScriptAction = "fullCommit"
-	ActionCommit               ScriptAction = "commit"
-	ActionHandleCommit         ScriptAction = "handleCommit"
-	ActionHandlePendingCommit  ScriptAction = "handlePendingCommit"
-	ActionProtect              ScriptAction = "protect"
-	ActionUnprotect            ScriptAction = "unprotect"
+	ActionCreateGroup                    ScriptAction = "createGroup"
+	ActionCreateKeyPackage               ScriptAction = "createKeyPackage"
+	ActionJoinGroup                      ScriptAction = "joinGroup"
+	ActionExternalJoin                   ScriptAction = "externalJoin"
+	ActionInstallExternalPSK             ScriptAction = "installExternalPSK"
+	ActionPublicGroupState               ScriptAction = "groupInfo"
+	ActionAddProposal                    ScriptAction = "addProposal"
+	ActionUpdateProposal                 ScriptAction = "updateProposal"
+	ActionRemoveProposal                 ScriptAction = "removeProposal"
+	ActionPreSharedKeyProposal           ScriptAction = "preSharedKeyProposal"
+	ActionGroupContextExtensionsProposal ScriptAction = "groupContextExtensionsProposal"
+	ActionFullCommit                     ScriptAction = "fullCommit"
+	ActionCommit                         ScriptAction = "commit"
+	ActionHandleCommit                   ScriptAction = "handleCommit"
+	ActionHandlePendingCommit            ScriptAction = "handlePendingCommit"
+	ActionProtect                        ScriptAction = "protect"
+	ActionUnprotect                      ScriptAction = "unprotect"
 
 	TimeoutSeconds = 120
 )
@@ -90,6 +91,10 @@ type RemoveProposalStepParams struct {
 
 type PreSharedKeyProposalStepParams struct {
 	PSK int `json:"psk"`
+}
+
+type GroupContextExtensionsProposalStepParams struct {
+	Extensions map[int]string `json:"extensions"`
 }
 
 type FullCommitStepParams struct {
@@ -643,6 +648,37 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
+	case ActionGroupContextExtensionsProposal:
+		client := config.ActorClients[step.Actor]
+		var params GroupContextExtensionsProposalStepParams
+		err := json.Unmarshal(step.Raw, &params)
+
+		if err != nil {
+			return err
+		}
+
+		types := []uint32{}
+		data := [][]byte{}
+		for t, d := range params.Extensions {
+			fmt.Println("extension", t)
+			types = append(types, uint32(t))
+			data = append(data, []byte(d))
+		}
+
+		req := &pb.GroupContextExtensionsProposalRequest{
+			StateId:        config.stateID[step.Actor],
+			ExtensionTypes: types,
+			ExtensionData:  data,
+		}
+
+		resp, err := client.rpc.GroupContextExtensionsProposal(ctx(), req)
+
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "proposal", resp.Proposal)
+
 	case ActionFullCommit:
 		client := config.ActorClients[step.Actor]
 		var params FullCommitStepParams
@@ -682,7 +718,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "welcome", commitResp.Welcome)
 		config.StoreMessage(index, "commit", commitResp.Commit)
-		if !params.ExternalTree {
+		if params.ExternalTree {
 			config.StoreMessage(index, "ratchet_tree", commitResp.RatchetTree)
 		}
 
@@ -718,7 +754,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			}
 
 			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
-				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
+				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator [%s]", member, hex.EncodeToString(resp.EpochAuthenticator))
 			}
 
 			config.stateID[member] = resp.StateId
