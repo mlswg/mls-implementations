@@ -53,6 +53,7 @@ const (
 	ActionHandlePendingCommit            ScriptAction = "handlePendingCommit"
 	ActionProtect                        ScriptAction = "protect"
 	ActionUnprotect                      ScriptAction = "unprotect"
+	ActionReInit                         ScriptAction = "reinit"
 
 	TimeoutSeconds = 120
 )
@@ -166,6 +167,18 @@ type ProtectStepParams struct {
 
 type UnprotectStepParams struct {
 	Ciphertext int `json:"ciphertext"`
+}
+
+type ReInitStepParams struct {
+	Proposer          string          `json:"proposer"`
+	Committer         string          `json:"committer"`
+	Welcomer          string          `json:"welcomer"`
+	Members           []string        `json:"members"`
+	ChangeCipherSuite bool            `json:"changeCipherSuite"`
+	ChangeGroupID     bool            `json:"changeGroupID"`
+	Extensions        []*pb.Extension `json:"extensions"`
+	ForcePath         bool            `json:"forcePath"`
+	ExternalTree      bool            `json:"externalTree"`
 }
 
 func (step *ScriptStep) UnmarshalJSON(data []byte) error {
@@ -397,8 +410,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 	switch step.Action {
 	case ActionCreateGroup:
 		client := config.ActorClients[step.Actor]
+		groupID := []byte(uuid.New().String())
 		req := &pb.CreateGroupRequest{
-			GroupId:          []byte(uuid.New().String()),
+			GroupId:          groupID,
 			CipherSuite:      config.CipherSuite,
 			EncryptHandshake: config.EncryptHandshake,
 			Identity:         []byte(step.Actor),
@@ -409,6 +423,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		config.stateID[step.Actor] = resp.StateId
+		config.StoreMessage(index, "group_id", groupID)
 
 	case ActionCreateKeyPackage:
 		client := config.ActorClients[step.Actor]
@@ -1000,6 +1015,201 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		config.stateID[step.Actor] = resp.StateId
+
+	// XXX(RLB): This step does not store anything in the transcript.  With the
+	// KeyPackages and whatnot, it would be too complicated.  When we refactor to
+	// make the transcript tracking more elegant, we can add the tracking here.
+	case ActionReInit:
+		var params ReInitStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		// Compute sets of members less the committer and the welcomer
+		notCommitter := map[string]bool{params.Proposer: true, params.Welcomer: true}
+		notWelcomer := map[string]bool{params.Proposer: true, params.Committer: true}
+		for _, member := range params.Members {
+			notCommitter[member] = true
+			notWelcomer[member] = true
+		}
+
+		delete(notCommitter, params.Committer)
+		delete(notWelcomer, params.Welcomer)
+
+		// Decide on the parameters to send
+		newGroupID, err := config.GetMessage(0, "group_id")
+		if err != nil {
+			return err
+		}
+		if params.ChangeGroupID {
+			newGroupID = append(newGroupID, []byte("++")...)
+		}
+
+		newCipherSuite := config.CipherSuite
+		if params.ChangeCipherSuite {
+			// Compute the set of ciphersuites supported by all clients
+			var supportedSuites map[uint32]bool
+			for _, client := range config.ActorClients {
+				// Initialize with the first client
+				if supportedSuites == nil {
+					supportedSuites = map[uint32]bool{}
+					for suite := range client.supported {
+						supportedSuites[suite] = true
+					}
+					continue
+				}
+
+				// Then remove suites not supported by other clients
+				for suite := range supportedSuites {
+					if !client.supported[suite] {
+						delete(supportedSuites, suite)
+					}
+				}
+			}
+
+			// Remove the current ciphersuite
+			delete(supportedSuites, config.CipherSuite)
+
+			// Select one of the remaining ones
+			if len(supportedSuites) == 0 {
+				return fmt.Errorf("No remaining supported ciphersuite")
+			}
+
+			for suite := range supportedSuites {
+				newCipherSuite = suite
+				break
+			}
+			config.CipherSuite = newCipherSuite
+		}
+
+		// Have the proposer create the Proposal
+		proposal := []byte{}
+		{
+			client := config.ActorClients[params.Proposer]
+			req := &pb.ReInitProposalRequest{
+				StateId:     config.stateID[params.Proposer],
+				CipherSuite: newCipherSuite,
+				GroupId:     newGroupID,
+				Extensions:  params.Extensions,
+			}
+			resp, err := client.rpc.ReInitProposal(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			proposal = resp.Proposal
+		}
+
+		// Have the committer commit the Proposal and advance their state
+		// XXX(RLB): This only supports committing ReInit by reference.  We might
+		// want to refactor so that it can be done by value as well.
+		commit := []byte{}
+		epochAuthenticator := []byte{}
+		reinitIDs := map[string]uint32{}
+		keyPackages := map[string][]byte{}
+		{
+			client := config.ActorClients[params.Committer]
+			commitReq := &pb.CommitRequest{
+				StateId:     config.stateID[params.Committer],
+				ByReference: [][]byte{proposal},
+			}
+			commitResp, err := client.rpc.ReInitCommit(ctx(), commitReq)
+			if err != nil {
+				return err
+			}
+
+			commit = commitResp.Commit
+
+			handleReq := &pb.HandlePendingCommitRequest{
+				StateId: config.stateID[params.Committer],
+			}
+
+			resp, err := client.rpc.HandlePendingReInitCommit(ctx(), handleReq)
+			if err != nil {
+				return err
+			}
+
+			reinitIDs[params.Committer] = resp.ReinitId
+			keyPackages[params.Committer] = resp.KeyPackage
+			epochAuthenticator = resp.EpochAuthenticator
+		}
+
+		// Have everyone except the committer handle the Commit
+		for member := range notCommitter {
+			client := config.ActorClients[member]
+			req := &pb.HandleCommitRequest{
+				StateId:  config.stateID[member],
+				Proposal: [][]byte{proposal},
+				Commit:   commit,
+			}
+			resp, err := client.rpc.HandleReInitCommit(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
+			}
+
+			reinitIDs[member] = resp.ReinitId
+			keyPackages[member] = resp.KeyPackage
+		}
+
+		fmt.Printf("reinitIDs: %+v\n", reinitIDs)
+		fmt.Printf("keyPackages: %+v\n", keyPackages)
+
+		// Have the welcomer create the Welcome
+		// XXX(RLB) Note that this assumes that the welcomer will advance its state
+		// as a side effect of `ReInitWelcome()`
+		var welcome []byte
+		var ratchetTree []byte
+		reinitEpochAuthenticator := []byte{}
+		{
+			keyPackageList := [][]byte{}
+			for member := range notWelcomer {
+				keyPackageList = append(keyPackageList, keyPackages[member])
+			}
+
+			client := config.ActorClients[params.Welcomer]
+			req := &pb.ReInitWelcomeRequest{
+				ReinitId:     reinitIDs[params.Welcomer],
+				KeyPackage:   keyPackageList,
+				ForcePath:    params.ForcePath,
+				ExternalTree: params.ExternalTree,
+			}
+			resp, err := client.rpc.ReInitWelcome(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			config.stateID[params.Welcomer] = resp.StateId
+			welcome = resp.Welcome
+			reinitEpochAuthenticator = resp.EpochAuthenticator
+			if params.ExternalTree {
+				ratchetTree = resp.RatchetTree
+			}
+		}
+
+		// Have everyone except the welcomer process the Welcome
+		for member := range notWelcomer {
+			client := config.ActorClients[member]
+			req := &pb.HandleReInitWelcomeRequest{
+				ReinitId:    reinitIDs[member],
+				Welcome:     welcome,
+				RatchetTree: ratchetTree,
+			}
+			resp, err := client.rpc.HandleReInitWelcome(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			if !bytes.Equal(resp.EpochAuthenticator, reinitEpochAuthenticator) {
+				return fmt.Errorf("Member [%s] failed to agree on reinit epoch authenticator", member)
+			}
+
+			config.stateID[member] = resp.StateId
+		}
 
 	default:
 		return fmt.Errorf("Unknown action: %s", step.Action)
