@@ -39,7 +39,7 @@ const (
 	ActionJoinGroup            ScriptAction = "joinGroup"
 	ActionExternalJoin         ScriptAction = "externalJoin"
 	ActionInstallExternalPSK   ScriptAction = "installExternalPSK"
-	ActionPublicGroupState     ScriptAction = "publicGroupState"
+	ActionGroupInfo            ScriptAction = "groupInfo"
 	ActionAddProposal          ScriptAction = "addProposal"
 	ActionUpdateProposal       ScriptAction = "updateProposal"
 	ActionRemoveProposal       ScriptAction = "removeProposal"
@@ -65,7 +65,15 @@ type JoinGroupStepParams struct {
 }
 
 type ExternalJoinStepParams struct {
-	PublicGroupState int `json:"publicGroupState"`
+	Joiner       string   `json:"adder"`
+	Members      []string `json:"members"`
+	ExternalTree bool     `json:"externalTree"`
+	RemovePrior  bool     `json:"removePrior"`
+	PSKs         []int    `json:"psks"`
+}
+
+type GroupInfoStepParams struct {
+	ExternalTree bool `json:"externalTree"`
 }
 
 type InstallExternalPSKStepParams struct {
@@ -146,6 +154,16 @@ func (s Script) Actors() []string {
 		}
 
 		actorMap[step.Actor] = true
+
+		if step.Action == ActionExternalJoin {
+			var params ExternalJoinStepParams
+			err := json.Unmarshal(step.Raw, &params)
+			if err != nil {
+				continue
+			}
+
+			actorMap[params.Joiner] = true
+		}
 	}
 
 	actors := make([]string, 0, len(actorMap))
@@ -395,30 +413,94 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		config.stateID[step.Actor] = resp.StateId
 
 	case ActionExternalJoin:
-		client := config.ActorClients[step.Actor]
 		var params ExternalJoinStepParams
 		err := json.Unmarshal(step.Raw, &params)
 		if err != nil {
 			return err
 		}
 
-		pgs, err := config.GetMessage(params.PublicGroupState, "publicGroupState")
-		if err != nil {
-			return err
+		// Get a GroupInfo and maybe a ratchet tree from the adder
+		groupInfo := []byte{}
+		ratchetTree := []byte{}
+		{
+			client := config.ActorClients[step.Actor]
+			req := &pb.GroupInfoRequest{
+				StateId:      config.stateID[step.Actor],
+				ExternalTree: params.ExternalTree,
+			}
+			resp, err := client.rpc.GroupInfo(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			groupInfo = resp.GroupInfo
+			ratchetTree = resp.RatchetTree
 		}
 
-		req := &pb.ExternalJoinRequest{
-			PublicGroupState: pgs,
-			EncryptHandshake: config.EncryptHandshake,
-			Identity:         []byte(step.Actor),
-		}
-		resp, err := client.rpc.ExternalJoin(ctx(), req)
-		if err != nil {
-			return err
+		config.StoreMessage(index, "group_info", groupInfo)
+		config.StoreMessage(index, "ratchet_tree", ratchetTree)
+
+		// Create an external Commit
+		commit := []byte{}
+		epochAuthenticator := []byte{}
+		{
+			psks := make([]*pb.PreSharedKey, len(params.PSKs))
+			for i, pskIx := range params.PSKs {
+				pskID, err := config.GetMessage(pskIx, "psk_id")
+				if err != nil {
+					return err
+				}
+
+				pskSecret, err := config.GetMessage(pskIx, "psk_secret")
+				if err != nil {
+					return err
+				}
+
+				psks[i] = &pb.PreSharedKey{PskId: pskID, PskSecret: pskSecret}
+			}
+
+			client := config.ActorClients[params.Joiner]
+			req := &pb.ExternalJoinRequest{
+				GroupInfo:        groupInfo,
+				RatchetTree:      ratchetTree,
+				EncryptHandshake: config.EncryptHandshake,
+				Identity:         []byte(step.Actor),
+				RemovePrior:      params.RemovePrior,
+				Psks:             psks,
+			}
+			resp, err := client.rpc.ExternalJoin(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			config.stateID[params.Joiner] = resp.StateId
+
+			commit = resp.Commit
+			epochAuthenticator = resp.EpochAuthenticator
 		}
 
-		config.stateID[step.Actor] = resp.StateId
-		config.StoreMessage(index, "commit", resp.Commit)
+		config.StoreMessage(index, "commit", commit)
+		config.StoreMessage(index, "epoch_authenticator", epochAuthenticator)
+
+		// Process the Commit at the adder and other members
+		params.Members = append(params.Members, step.Actor)
+		for _, member := range params.Members {
+			client := config.ActorClients[member]
+			req := &pb.HandleCommitRequest{
+				StateId: config.stateID[member],
+				Commit:  commit,
+			}
+			resp, err := client.rpc.HandleCommit(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
+			}
+
+			config.stateID[member] = resp.StateId
+		}
 
 	case ActionInstallExternalPSK:
 		var params InstallExternalPSKStepParams
@@ -456,18 +538,25 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			}
 		}
 
-	case ActionPublicGroupState:
+	case ActionGroupInfo:
 		client := config.ActorClients[step.Actor]
-
-		req := &pb.PublicGroupStateRequest{
-			StateId: config.stateID[step.Actor],
-		}
-		resp, err := client.rpc.PublicGroupState(ctx(), req)
+		var params GroupInfoStepParams
+		err := json.Unmarshal(step.Raw, &params)
 		if err != nil {
 			return err
 		}
 
-		config.StoreMessage(index, "publicGroupState", resp.PublicGroupState)
+		req := &pb.GroupInfoRequest{
+			StateId:      config.stateID[step.Actor],
+			ExternalTree: params.ExternalTree,
+		}
+		resp, err := client.rpc.GroupInfo(ctx(), req)
+		if err != nil {
+			return err
+		}
+
+		config.StoreMessage(index, "group_info", resp.GroupInfo)
+		config.StoreMessage(index, "ratchet_tree", resp.RatchetTree)
 
 	case ActionAddProposal:
 		client := config.ActorClients[step.Actor]
