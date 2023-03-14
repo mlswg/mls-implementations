@@ -44,22 +44,18 @@
     ],
 
     "group_context_extensions": [
-      {"action": "createGroup", "actor": "alice1"},
-      {"action": "createKeyPackage", "actor": "alice2"},
-      {"action": "createKeyPackage", "actor": "alice3"},
-      {"action": "addProposal", "actor": "alice1", "keyPackage": 1},
-      {"action": "addProposal", "actor": "alice1", "keyPackage": 2},
-      {"action": "fullCommit", "actor": "alice1", "byReference": [3, 4], "joiners": ["alice2", "alice3"]},
-      {"action": "groupContextExtensionsProposal", "actor": "alice1", "extensions": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "groupContextExtensionsProposal", "actor": "alice", "extensions": [
         {"extension_type": 123, "extension_data": "aGVsbG8="},
         {"extension_type": 321, "extension_data": "d29ybGQ="}
       ]},
-      {"action": "fullCommit", "actor": "alice1", "byReference": [6], "members": ["alice2", "alice3"]},
-      {"action": "groupContextExtensionsProposal", "actor": "alice1", "extensions": [
+      {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["bob"]},
+      {"action": "groupContextExtensionsProposal", "actor": "bob", "extensions": [
         {"extension_type": 123, "extension_data": "aGVsbG8="},
         {"extension_type": 321, "extension_data": "d29ybGQ="}
       ]},
-      {"action": "fullCommit", "actor": "alice2", "byReference": [8], "members": ["alice1", "alice3"]}
+      {"action": "fullCommit", "actor": "alice", "byReference": [8], "members": ["bob"]}
     ],
 
     "external_psk": [
