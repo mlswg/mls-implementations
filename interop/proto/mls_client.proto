@@ -217,10 +217,14 @@ message ReInitProposalRequest {
 }
 
 // rpc GroupContextExtensionsProposal
+message Extension {
+  uint32 extension_type = 1;
+  bytes extension_data = 2;
+}
+
 message GroupContextExtensionsProposalRequest {
   uint32 state_id = 1;
-  repeated uint32 extension_types = 2;
-  repeated bytes extension_data = 3;
+  repeated Extension extensions = 2;
 }
 
 // rpc Commit

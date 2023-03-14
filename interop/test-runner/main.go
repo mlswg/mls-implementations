@@ -39,7 +39,7 @@ const (
 	ActionJoinGroup                      ScriptAction = "joinGroup"
 	ActionExternalJoin                   ScriptAction = "externalJoin"
 	ActionInstallExternalPSK             ScriptAction = "installExternalPSK"
-	ActionPublicGroupState               ScriptAction = "groupInfo"
+	ActionGroupInfo                      ScriptAction = "groupInfo"
 	ActionAddProposal                    ScriptAction = "addProposal"
 	ActionUpdateProposal                 ScriptAction = "updateProposal"
 	ActionRemoveProposal                 ScriptAction = "removeProposal"
@@ -67,7 +67,7 @@ type JoinGroupStepParams struct {
 }
 
 type ExternalJoinStepParams struct {
-	Joiner       string   `json:"adder"`
+	Joiner       string   `json:"joiner"`
 	Members      []string `json:"members"`
 	ExternalTree bool     `json:"externalTree"`
 	RemovePrior  bool     `json:"removePrior"`
@@ -99,7 +99,7 @@ type ResumptionPSKProposalStepParams struct {
 }
 
 type GroupContextExtensionsProposalStepParams struct {
-	Extensions map[int]string `json:"extensions"`
+	Extensions []*pb.Extension `json:"extensions"`
 }
 
 type FullCommitStepParams struct {
@@ -474,7 +474,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				GroupInfo:        groupInfo,
 				RatchetTree:      ratchetTree,
 				EncryptHandshake: config.EncryptHandshake,
-				Identity:         []byte(step.Actor),
+				Identity:         []byte(params.Joiner),
 				RemovePrior:      params.RemovePrior,
 				Psks:             psks,
 			}
@@ -681,17 +681,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
-		types := []uint32{}
-		data := [][]byte{}
-		for t, d := range params.Extensions {
-			types = append(types, uint32(t))
-			data = append(data, []byte(d))
-		}
-
 		req := &pb.GroupContextExtensionsProposalRequest{
-			StateId:        config.stateID[step.Actor],
-			ExtensionTypes: types,
-			ExtensionData:  data,
+			StateId:    config.stateID[step.Actor],
+			Extensions: params.Extensions,
 		}
 
 		resp, err := client.rpc.GroupContextExtensionsProposal(ctx(), req)
@@ -777,7 +769,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			}
 
 			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
-				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator [%s]", member, hex.EncodeToString(resp.EpochAuthenticator))
+				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
 			}
 
 			config.stateID[member] = resp.StateId
