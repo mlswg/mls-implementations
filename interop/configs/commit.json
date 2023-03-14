@@ -1,0 +1,124 @@
+{
+  "scripts": {
+    "empty": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "fullCommit", "actor": "alice", "members": ["bob"]}
+    ],
+
+    "add": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+
+      {"action": "createKeyPackage", "actor": "charlie1"},
+      {"action": "createKeyPackage", "actor": "charlie2"},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 2},
+      {"action": "addProposal", "actor": "bob", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice", "byReference": [4, 5], "members": ["bob"], "joiners": ["charlie1", "charlie2"], "force_path": true},
+
+      {"action": "createKeyPackage", "actor": "charlie3"},
+      {"action": "createKeyPackage", "actor": "charlie4"},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 7},
+      {"action": "addProposal", "actor": "bob", "keyPackage": 8},
+      {"action": "fullCommit", "actor": "alice", "byReference": [9, 10], "members": ["bob", "charlie1", "charlie2"], "joiners": ["charlie3", "charlie4"], "force_path": false}
+    ],
+
+    "remove": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "createKeyPackage", "actor": "charlie1"},
+      {"action": "createKeyPackage", "actor": "charlie2"},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice", "byReference": [4, 5], "members": ["bob"], "joiners": ["charlie1", "charlie2"]},
+      {"action": "removeProposal", "actor": "alice", "removed": "charlie1"},
+      {"action": "removeProposal", "actor": "bob", "removed": "charlie2"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [7, 8], "members": ["bob"]}
+    ],
+
+    "update": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "updateProposal", "actor": "bob"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [2], "members": ["bob"]}
+    ],
+
+    "group_context_extensions": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "groupContextExtensionsProposal", "actor": "alice", "extensions": [
+        {"extension_type": 123, "extension_data": "aGVsbG8="},
+        {"extension_type": 321, "extension_data": "d29ybGQ="}
+      ]},
+      {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["bob"]},
+      {"action": "groupContextExtensionsProposal", "actor": "bob", "extensions": [
+        {"extension_type": 123, "extension_data": "aGVsbG8="},
+        {"extension_type": 321, "extension_data": "d29ybGQ="}
+      ]},
+      {"action": "fullCommit", "actor": "alice", "byReference": [8], "members": ["bob"]}
+    ],
+
+    "external_psk": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "installExternalPSK", "clients": ["alice", "bob"]},
+      {"action": "installExternalPSK", "clients": ["alice", "bob"]},
+
+      {"action": "externalPSKProposal", "pskID": 2, "actor": "alice"},
+      {"action": "externalPSKProposal", "pskID": 3, "actor": "bob"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [4, 5], "members": ["bob"], "force_path": true},
+
+      {"action": "externalPSKProposal", "pskID": 2, "actor": "alice"},
+      {"action": "externalPSKProposal", "pskID": 3, "actor": "bob"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [4, 5], "members": ["bob"], "force_path": false}
+    ],
+
+    "resumption_psk": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "fullCommit", "actor": "alice", "members": ["bob"]},
+
+      {"action": "resumptionPSKProposal", "epochID": 1, "actor": "alice"},
+      {"action": "resumptionPSKProposal", "epochID": 1, "actor": "bob"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [3, 4], "members": ["bob"], "force_path": true},
+
+      {"action": "resumptionPSKProposal", "epochID": 2, "actor": "alice"},
+      {"action": "resumptionPSKProposal", "epochID": 2, "actor": "bob"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [3, 4], "members": ["bob"], "force_path": false}
+    ],
+
+    "all_together": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "createKeyPackage", "actor": "charlie1"},
+      {"action": "createKeyPackage", "actor": "charlie2"},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 2},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 3},
+      {"action": "fullCommit", "actor": "alice", "byReference": [4, 5], "members": ["bob"], "joiners": ["charlie1", "charlie2"]},
+      {"action": "installExternalPSK", "clients": ["alice", "bob"]},
+
+      {"action": "createKeyPackage", "actor": "charlie3"},
+      {"action": "addProposal", "actor": "alice", "keyPackage": 8},
+      {"action": "removeProposal", "actor": "alice", "removed": "charlie1"},
+      {"action": "groupContextExtensionsProposal", "actor": "alice", "extensions": [
+        {"extension_type": 123, "extension_data": "aGVsbG8="},
+        {"extension_type": 321, "extension_data": "d29ybGQ="}
+      ]},
+      {"action": "externalPSKProposal", "pskID": 7, "actor": "alice"},
+      {"action": "resumptionPSKProposal", "epochID": 1, "actor": "alice"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [9, 10, 11, 12, 13], "members": ["bob"]},
+
+      {"action": "createKeyPackage", "actor": "charlie4"},
+      {"action": "addProposal", "actor": "bob", "keyPackage": 15},
+      {"action": "removeProposal", "actor": "bob", "removed": "charlie2"},
+      {"action": "updateProposal", "actor": "bob"},
+      {"action": "groupContextExtensionsProposal", "actor": "bob", "extensions": [
+        {"extension_type": 123, "extension_data": "aGVsbG8="},
+        {"extension_type": 321, "extension_data": "d29ybGQ="}
+      ]},
+      {"action": "externalPSKProposal", "pskID": 7, "actor": "bob"},
+      {"action": "resumptionPSKProposal", "epochID": 1, "actor": "bob"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [16, 17, 18, 19, 20, 21], "members": ["bob"]}
+    ]
+  }
+}

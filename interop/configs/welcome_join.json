@@ -19,7 +19,7 @@
           {"action": "createKeyPackage", "actor": "bob"},
           {"action": "addProposal", "actor": "alice", "keyPackage": 1},
           {"action": "installExternalPSK", "clients": ["alice", "bob"]},
-          {"action": "preSharedKeyProposal", "actor": "alice", "psk": 3},
+          {"action": "externalPSKProposal", "actor": "alice", "pskID": 3},
           {"action": "fullCommit", "actor": "alice", "byReference": [2, 4], "joiners": ["bob"]}
     ],
 
