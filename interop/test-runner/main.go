@@ -67,7 +67,7 @@ type JoinGroupStepParams struct {
 }
 
 type ExternalJoinStepParams struct {
-	Joiner       string   `json:"joiner"`
+	Joiner       string   `json:"adder"`
 	Members      []string `json:"members"`
 	ExternalTree bool     `json:"externalTree"`
 	RemovePrior  bool     `json:"removePrior"`
@@ -474,7 +474,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				GroupInfo:        groupInfo,
 				RatchetTree:      ratchetTree,
 				EncryptHandshake: config.EncryptHandshake,
-				Identity:         []byte(params.Joiner),
+				Identity:         []byte(step.Actor),
 				RemovePrior:      params.RemovePrior,
 				Psks:             psks,
 			}
@@ -733,7 +733,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "welcome", commitResp.Welcome)
 		config.StoreMessage(index, "commit", commitResp.Commit)
-		if params.ExternalTree {
+		if !params.ExternalTree {
 			config.StoreMessage(index, "ratchet_tree", commitResp.RatchetTree)
 		}
 
