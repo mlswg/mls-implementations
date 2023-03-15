@@ -50,12 +50,12 @@
         {"extension_type": 123, "extension_data": "aGVsbG8="},
         {"extension_type": 321, "extension_data": "d29ybGQ="}
       ]},
-      {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["bob"]},
+      {"action": "fullCommit", "actor": "alice", "byReference": [2], "members": ["bob"]},
       {"action": "groupContextExtensionsProposal", "actor": "bob", "extensions": [
         {"extension_type": 123, "extension_data": "aGVsbG8="},
         {"extension_type": 321, "extension_data": "d29ybGQ="}
       ]},
-      {"action": "fullCommit", "actor": "alice", "byReference": [8], "members": ["bob"]}
+      {"action": "fullCommit", "actor": "alice", "byReference": [4], "members": ["bob"]}
     ],
 
     "external_psk": [
@@ -70,7 +70,7 @@
 
       {"action": "externalPSKProposal", "pskID": 2, "actor": "alice"},
       {"action": "externalPSKProposal", "pskID": 3, "actor": "bob"},
-      {"action": "fullCommit", "actor": "alice", "byReference": [4, 5], "members": ["bob"], "force_path": false}
+      {"action": "fullCommit", "actor": "alice", "byReference": [7, 8], "members": ["bob"], "force_path": false}
     ],
 
     "resumption_psk": [
@@ -84,7 +84,7 @@
 
       {"action": "resumptionPSKProposal", "epochID": 2, "actor": "alice"},
       {"action": "resumptionPSKProposal", "epochID": 2, "actor": "bob"},
-      {"action": "fullCommit", "actor": "alice", "byReference": [3, 4], "members": ["bob"], "force_path": false}
+      {"action": "fullCommit", "actor": "alice", "byReference": [6, 7], "members": ["bob"], "force_path": false}
     ],
 
     "all_together": [
