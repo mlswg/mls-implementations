@@ -150,7 +150,8 @@ message ExportResponse {
 // rpc Protect
 message ProtectRequest {
   uint32 state_id = 1;
-  bytes application_data = 2;
+  bytes authenticated_data = 2;
+  bytes plaintext = 3;
 }
 
 message ProtectResponse { 
@@ -164,7 +165,8 @@ message UnprotectRequest {
 }
 
 message UnprotectResponse {
-  bytes application_data = 1;
+  bytes authenticated_data = 1;
+  bytes plaintext = 2;
 }
 
 // rpc StorePSK

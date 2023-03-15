@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 
 	pb "github.com/mlswg/mls-implementations/interop/proto"
@@ -124,7 +125,8 @@ type HandleCommitStepParams struct {
 }
 
 type ProtectStepParams struct {
-	ApplicationData []byte `json:"applicationData"`
+	AuthenticatedData string `json:"authenticatedData"`
+	Plaintext         string `json:"plaintext"`
 }
 
 type UnprotectStepParams struct {
@@ -361,7 +363,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 	case ActionCreateGroup:
 		client := config.ActorClients[step.Actor]
 		req := &pb.CreateGroupRequest{
-			GroupId:          []byte("group"),
+			GroupId:          []byte(uuid.New().String()),
 			CipherSuite:      config.CipherSuite,
 			EncryptHandshake: config.EncryptHandshake,
 			Identity:         []byte(step.Actor),
@@ -857,15 +859,20 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
+		authenticatedData := []byte(params.AuthenticatedData)
+		plaintext := []byte(params.Plaintext)
 		req := &pb.ProtectRequest{
-			StateId:         config.stateID[step.Actor],
-			ApplicationData: params.ApplicationData,
+			StateId:           config.stateID[step.Actor],
+			AuthenticatedData: authenticatedData,
+			Plaintext:         plaintext,
 		}
 		resp, err := client.rpc.Protect(ctx(), req)
 		if err != nil {
 			return err
 		}
 
+		config.StoreMessage(index, "authenticatedData", authenticatedData)
+		config.StoreMessage(index, "plaintext", plaintext)
 		config.StoreMessage(index, "ciphertext", resp.Ciphertext)
 
 	case ActionUnprotect:
@@ -890,7 +897,26 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
-		config.StoreMessage(index, "applicationData", resp.ApplicationData)
+		authenticatedData, err := config.GetMessage(params.Ciphertext, "authenticatedData")
+		if err != nil {
+			return err
+		}
+
+		plaintext, err := config.GetMessage(params.Ciphertext, "plaintext")
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(authenticatedData, resp.AuthenticatedData) {
+			return fmt.Errorf("Incorrect authenticated data")
+		}
+
+		if !bytes.Equal(plaintext, resp.Plaintext) {
+			return fmt.Errorf("Incorrect plaintext")
+		}
+
+		config.StoreMessage(index, "authenticatedData", resp.AuthenticatedData)
+		config.StoreMessage(index, "plaintext", resp.Plaintext)
 
 	case ActionHandleCommit:
 		client := config.ActorClients[step.Actor]
