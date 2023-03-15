@@ -474,7 +474,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				GroupInfo:        groupInfo,
 				RatchetTree:      ratchetTree,
 				EncryptHandshake: config.EncryptHandshake,
-				Identity:         []byte(prams.Joiner),
+				Identity:         []byte(params.Joiner),
 				RemovePrior:      params.RemovePrior,
 				Psks:             psks,
 			}
@@ -733,7 +733,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "welcome", commitResp.Welcome)
 		config.StoreMessage(index, "commit", commitResp.Commit)
-		if !params.ExternalTree {
+		if params.ExternalTree {
 			config.StoreMessage(index, "ratchet_tree", commitResp.RatchetTree)
 		}
 
@@ -845,7 +845,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.StoreMessage(index, "commit", resp.Commit)
 		config.StoreMessage(index, "welcome", resp.Welcome)
-		if !params.ExternalTree {
+		if params.ExternalTree {
 			config.StoreMessage(index, "ratchet_tree", resp.RatchetTree)
 		}
 
