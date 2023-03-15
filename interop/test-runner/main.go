@@ -124,8 +124,8 @@ type HandleCommitStepParams struct {
 }
 
 type ProtectStepParams struct {
-	AuthenticatedData []byte `json:"authenticatedData"`
-	Plaintext         []byte `json:"applicationData"`
+	AuthenticatedData string `json:"authenticatedData"`
+	Plaintext         string `json:"plaintext"`
 }
 
 type UnprotectStepParams struct {
@@ -858,18 +858,20 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
+		authenticatedData := []byte(params.AuthenticatedData)
+		plaintext := []byte(params.Plaintext)
 		req := &pb.ProtectRequest{
 			StateId:           config.stateID[step.Actor],
-			AuthenticatedData: params.AuthenticatedData,
-			Plaintext:         params.Plaintext,
+			AuthenticatedData: authenticatedData,
+			Plaintext:         plaintext,
 		}
 		resp, err := client.rpc.Protect(ctx(), req)
 		if err != nil {
 			return err
 		}
 
-		config.StoreMessage(index, "authenticatedData", params.AuthenticatedData)
-		config.StoreMessage(index, "plaintext", params.Plaintext)
+		config.StoreMessage(index, "authenticatedData", authenticatedData)
+		config.StoreMessage(index, "plaintext", plaintext)
 		config.StoreMessage(index, "ciphertext", resp.Ciphertext)
 
 	case ActionUnprotect:
