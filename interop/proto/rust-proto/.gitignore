@@ -1,0 +1,12 @@
+**/target
+**/*.rs.bk
+.DS_Store
+**/Cargo.lock
+*.code-workspace
+.cargo/
+
+.vscode
+.idea
+*.iws
+*.iml
+*.ipr
