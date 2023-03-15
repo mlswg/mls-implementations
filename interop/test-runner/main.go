@@ -124,7 +124,8 @@ type HandleCommitStepParams struct {
 }
 
 type ProtectStepParams struct {
-	ApplicationData []byte `json:"applicationData"`
+	AuthenticatedData []byte `json:"authenticatedData"`
+	Plaintext         []byte `json:"applicationData"`
 }
 
 type UnprotectStepParams struct {
@@ -858,14 +859,17 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		req := &pb.ProtectRequest{
-			StateId:         config.stateID[step.Actor],
-			ApplicationData: params.ApplicationData,
+			StateId:           config.stateID[step.Actor],
+			AuthenticatedData: params.AuthenticatedData,
+			Plaintext:         params.Plaintext,
 		}
 		resp, err := client.rpc.Protect(ctx(), req)
 		if err != nil {
 			return err
 		}
 
+		config.StoreMessage(index, "authenticatedData", params.AuthenticatedData)
+		config.StoreMessage(index, "plaintext", params.Plaintext)
 		config.StoreMessage(index, "ciphertext", resp.Ciphertext)
 
 	case ActionUnprotect:
@@ -890,7 +894,26 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
-		config.StoreMessage(index, "applicationData", resp.ApplicationData)
+		authenticatedData, err := config.GetMessage(params.Ciphertext, "authenticatedData")
+		if err != nil {
+			return err
+		}
+
+		plaintext, err := config.GetMessage(params.Ciphertext, "plaintext")
+		if err != nil {
+			return err
+		}
+
+		if !bytes.Equal(authenticatedData, resp.AuthenticatedData) {
+			return fmt.Errorf("Incorrect authenticated data")
+		}
+
+		if !bytes.Equal(plaintext, resp.Plaintext) {
+			return fmt.Errorf("Incorrect plaintext")
+		}
+
+		config.StoreMessage(index, "authenticatedData", resp.AuthenticatedData)
+		config.StoreMessage(index, "plaintext", resp.Plaintext)
 
 	case ActionHandleCommit:
 		client := config.ActorClients[step.Actor]
