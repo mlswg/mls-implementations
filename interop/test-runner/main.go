@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 
 	pb "github.com/mlswg/mls-implementations/interop/proto"
@@ -362,7 +363,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 	case ActionCreateGroup:
 		client := config.ActorClients[step.Actor]
 		req := &pb.CreateGroupRequest{
-			GroupId:          []byte("group"),
+			GroupId:          []byte(uuid.New().String()),
 			CipherSuite:      config.CipherSuite,
 			EncryptHandshake: config.EncryptHandshake,
 			Identity:         []byte(step.Actor),
