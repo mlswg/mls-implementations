@@ -103,20 +103,55 @@ type GroupContextExtensionsProposalStepParams struct {
 	Extensions []*pb.Extension `json:"extensions"`
 }
 
+type ProposalDescription struct {
+	ProposalType string          `json:"proposalType"`
+	KeyPackage   int             `json:"keyPackage"`
+	Removed      string          `json:"removed"`
+	PskId        int             `json:"pskID"`
+	EpochId      int             `json:"epochID"`
+	Extensions   []*pb.Extension `json:"extensions"`
+}
+
+func (proposalDescription *ProposalDescription) ProposalDescriptionToProto(config *ScriptActorConfig) (*pb.ProposalDescription, error) {
+	proposalDescProto := &pb.ProposalDescription{ProposalType: []byte(proposalDescription.ProposalType)}
+	var err error
+
+	switch proposalDescription.ProposalType {
+	case "add":
+		proposalDescProto.KeyPackage, err = config.GetMessage(proposalDescription.KeyPackage, "key_package")
+	case "remove":
+		proposalDescProto.RemovedId = []byte(proposalDescription.Removed)
+	case "externalPSK":
+		proposalDescProto.PskId, err = config.GetMessage(proposalDescription.PskId, "psk_id")
+	case "resumptionPSK":
+		proposalDescProto.EpochId = uint64(proposalDescription.EpochId)
+	case "groupContextExtensions":
+		proposalDescProto.Extensions = proposalDescription.Extensions
+	default:
+		err = fmt.Errorf("unknown proposal type [%s]", proposalDescription.ProposalType)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return proposalDescProto, nil
+}
+
 type FullCommitStepParams struct {
-	ByReference  []int    `json:"byReference"`
-	ByValue      []int    `json:"byValue"`
-	Members      []string `json:"members"`
-	Joiners      []string `json:"joiners"`
-	ForcePath    bool     `json:"force_path"`
-	ExternalTree bool     `json:"external_tree"`
+	ByReference  []int                 `json:"byReference"`
+	ByValue      []ProposalDescription `json:"byValue"`
+	Members      []string              `json:"members"`
+	Joiners      []string              `json:"joiners"`
+	ForcePath    bool                  `json:"force_path"`
+	ExternalTree bool                  `json:"external_tree"`
 }
 
 type CommitStepParams struct {
-	ByReference  []int `json:"byReference"`
-	ByValue      []int `json:"byValue"`
-	ForcePath    bool  `json:"force_path"`
-	ExternalTree bool  `json:"external_tree"`
+	ByReference  []int                 `json:"byReference"`
+	ByValue      []ProposalDescription `json:"byValue"`
+	ForcePath    bool                  `json:"force_path"`
+	ExternalTree bool                  `json:"external_tree"`
 }
 
 type HandleCommitStepParams struct {
@@ -713,9 +748,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			}
 		}
 
-		byVal := make([][]byte, len(params.ByValue))
-		for i, ix64 := range params.ByValue {
-			byVal[i], err = config.GetMessage(int(ix64), "proposal")
+		byVal := make([]*pb.ProposalDescription, len(params.ByValue))
+		for i, proposalDescription := range params.ByValue {
+			byVal[i], err = proposalDescription.ProposalDescriptionToProto(config)
 			if err != nil {
 				return err
 			}
@@ -825,9 +860,9 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			}
 		}
 
-		byVal := make([][]byte, len(params.ByValue))
-		for i, ix64 := range params.ByValue {
-			byVal[i], err = config.GetMessage(int(ix64), "proposal")
+		byVal := make([]*pb.ProposalDescription, len(params.ByValue))
+		for i, proposalDescription := range params.ByValue {
+			byVal[i], err = proposalDescription.ProposalDescriptionToProto(config)
 			if err != nil {
 				return err
 			}

@@ -5,12 +5,10 @@
           {"action": "createKeyPackage", "actor": "bob"},
           {"action": "addProposal", "actor": "alice", "keyPackage": 1},
           {"action": "createKeyPackage", "actor": "charlie"},
-          {"action": "addProposal", "actor": "alice", "keyPackage": 3},
-          {"action": "fullCommit", "actor": "alice", "byReference": [2, 4], "joiners": ["bob", "charlie"]},
-          {"action": "removeProposal", "actor": "charlie", "removed": "bob"},
-          {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["charlie"]},
-          {"action": "protect", "actor": "alice", "applicationData": "aGVsbG8="},
-          {"action": "unprotect", "actor": "charlie", "ciphertext": 8}
+          {"action": "fullCommit", "actor": "alice", "byReference": [2], "byValue": [{"proposalType": "add", "keyPackage": 3}], "joiners": ["bob", "charlie"]},
+          {"action": "fullCommit", "actor": "alice", "byValue": [{"proposalType": "remove", "removed": "bob"}], "members": ["charlie"]},
+          {"action": "protect", "actor": "alice", "plaintext": "hello"},
+          {"action": "unprotect", "actor": "charlie", "ciphertext": 7}
         ]
   }
 }
