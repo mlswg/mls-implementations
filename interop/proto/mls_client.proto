@@ -229,12 +229,21 @@ message GroupContextExtensionsProposalRequest {
   repeated Extension extensions = 2;
 }
 
+message ProposalDescription {
+  bytes proposal_type = 1;
+  bytes key_package = 2;
+  bytes removed_id = 3;
+  bytes psk_id = 4;
+  uint64 epoch_id = 5;
+  repeated Extension extensions = 6;
+}
+
 // rpc Commit
 // Note: CommitResponse.ratchet_tree should be empty if CommitRequest.external_tree is not true
 message CommitRequest {
   uint32 state_id = 1;
   repeated bytes by_reference = 2;
-  repeated bytes by_value = 3;
+  repeated ProposalDescription by_value = 3;
   bool force_path = 4;
   bool external_tree = 5;
 }
