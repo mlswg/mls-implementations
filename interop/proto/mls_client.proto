@@ -230,12 +230,12 @@ message GroupContextExtensionsProposalRequest {
 }
 
 message ProposalDescription {
-  bytes proposal_type = 1;
-  bytes key_package = 2;
-  bytes removed_id = 3;
-  bytes psk_id = 4;
-  uint64 epoch_id = 5;
-  repeated Extension extensions = 6;
+  bytes proposal_type = 1; // One of "add", "remove", "externalPSK", "resumptionPSK", "groupContextExtensions"
+  bytes key_package = 2; // Required if proposal_type is "add"
+  bytes removed_id = 3; // Required if proposal_type is "remove"
+  bytes psk_id = 4; // Required if proposal_type is "externalPSK"
+  uint64 epoch_id = 5; // Required if proposal_type is "resumptionPSK"
+  repeated Extension extensions = 6; // Required if proposal_type is "groupContextExtensions"
 }
 
 // rpc Commit
