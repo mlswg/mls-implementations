@@ -54,6 +54,7 @@ const (
 	ActionProtect                        ScriptAction = "protect"
 	ActionUnprotect                      ScriptAction = "unprotect"
 	ActionReInit                         ScriptAction = "reinit"
+	ActionBranch                         ScriptAction = "branch"
 
 	TimeoutSeconds = 120
 )
@@ -179,6 +180,13 @@ type ReInitStepParams struct {
 	Extensions        []*pb.Extension `json:"extensions"`
 	ForcePath         bool            `json:"forcePath"`
 	ExternalTree      bool            `json:"externalTree"`
+}
+
+type BranchStepParams struct {
+	Members      []string        `json:"members"`
+	ForcePath    bool            `json:"force_path"`
+	ExternalTree bool            `json:"external_tree"`
+	Extensions   []*pb.Extension `json:"extensions"`
 }
 
 func (step *ScriptStep) UnmarshalJSON(data []byte) error {
@@ -1206,6 +1214,86 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 			if !bytes.Equal(resp.EpochAuthenticator, reinitEpochAuthenticator) {
 				return fmt.Errorf("Member [%s] failed to agree on reinit epoch authenticator", member)
+			}
+
+			config.stateID[member] = resp.StateId
+		}
+
+	case ActionBranch:
+		// XXX(RLB): Note that after this step, the state IDs remembered by the test
+		// runner will be for the members' states in the *new* group.  It would be
+		// nice to test that both the old and new groups now work.  But it's not
+		// clear how to do that in the scripting language.
+		// XXX(RLB): Also, this step does not write any output to the transcript
+		// right now, for similar reasons to ActionReInit and previous XXX note.
+		var params BranchStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		// Get KeyPackages from the members
+		transactionIDs := map[string]uint32{}
+		keyPackages := [][]byte{}
+		for _, member := range params.Members {
+			client := config.ActorClients[member]
+			req := &pb.CreateKeyPackageRequest{
+				CipherSuite: config.CipherSuite,
+				Identity:    []byte(member),
+			}
+			resp, err := client.rpc.CreateKeyPackage(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			transactionIDs[member] = resp.TransactionId
+			keyPackages = append(keyPackages, resp.KeyPackage)
+		}
+
+		// Have the committer create a branch Welcome
+		var welcome []byte
+		var ratchetTree []byte
+		var epochAuthenticator []byte
+		{
+			client := config.ActorClients[step.Actor]
+			req := &pb.CreateBranchRequest{
+				StateId:      config.stateID[step.Actor],
+				GroupId:      []byte(uuid.New().String()),
+				Extensions:   params.Extensions,
+				KeyPackages:  keyPackages,
+				ForcePath:    params.ForcePath,
+				ExternalTree: params.ExternalTree,
+			}
+			resp, err := client.rpc.CreateBranch(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			welcome = resp.Welcome
+			epochAuthenticator = resp.EpochAuthenticator
+			if params.ExternalTree {
+				ratchetTree = resp.RatchetTree
+			}
+
+			config.stateID[step.Actor] = resp.StateId
+		}
+
+		// Apply the Welcome at each other member
+		for _, member := range params.Members {
+			client := config.ActorClients[member]
+			req := &pb.HandleBranchRequest{
+				StateId:       config.stateID[member],
+				TransactionId: transactionIDs[member],
+				Welcome:       welcome,
+				RatchetTree:   ratchetTree,
+			}
+			resp, err := client.rpc.HandleBranch(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
 			}
 
 			config.stateID[member] = resp.StateId
