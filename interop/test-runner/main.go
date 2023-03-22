@@ -1045,6 +1045,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			client := config.ActorClients[params.Joiner]
 			req := &pb.SelfSignedAddProposalRequest{
 				GroupInfo: groupInfo,
+				Identity:  []byte(params.Joiner),
 			}
 			resp, err := client.rpc.SelfSignedAddProposal(ctx(), req)
 			if err != nil {

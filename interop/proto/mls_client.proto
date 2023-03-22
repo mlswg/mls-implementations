@@ -280,6 +280,7 @@ message HandlePendingCommitRequest {
 // rpc SelfSignedAddProposal
 message SelfSignedAddProposalRequest{
   bytes group_info = 1;
+  bytes identity = 2;
 }
 
 message SelfSignedAddProposalResponse{
