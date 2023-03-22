@@ -14,7 +14,7 @@
       {"action": "fullCommit", "actor": "alice", "byReference": [2], "members": ["bob"]},
 
       {"action": "createKeyPackage", "actor": "charlie" },
-      {"action": "externalSignerProposal", "actor": "ds",, "member": "alice",
+      {"action": "externalSignerProposal", "actor": "ds", "member": "alice",
        "description": { "proposalType": "add", "keyPackage": 4 } },
       {"action": "fullCommit", "actor": "alice", "byReference": [5], "members": ["bob"], 
        "joiners": ["charlie"] }
@@ -29,7 +29,7 @@
       {"action": "fullCommit", "actor": "alice", "byReference": [3], "members": ["bob", "charlie"]},
 
       {"action": "externalSignerProposal", "actor": "ds", "member": "alice",
-       "description": { "proposalType": "remove", "removedID": "bob" } },
+       "description": { "proposalType": "remove", "removed": "bob" } },
       {"action": "fullCommit", "actor": "alice", "byReference": [5], "members": ["charlie"] }
     ],
 
@@ -43,7 +43,7 @@
       {"action": "fullCommit", "actor": "alice", "byReference": [4], "members": ["bob", "charlie"]},
       
       {"action": "externalSignerProposal", "actor": "ds", "member": "alice",
-       "description": { "proposalType": "externalPSK", "pskID": 4 } },
+       "description": { "proposalType": "externalPSK", "pskID": 3 } },
       {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["bob", "charlie"] }
     ],
     
@@ -55,14 +55,16 @@
       {"action": "installExternalPSK", "clients": ["alice", "bob", "charlie"]},
       
       {"action": "addExternalSigner", "actor": "alice", "signer": "ds1"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [5], "members": ["bob", "charlie"]},
+      
       {"action": "addExternalSigner", "actor": "alice", "signer": "ds2"},
-      {"action": "fullCommit", "actor": "alice", "byReference": [5, 6], "members": ["bob", "charlie"]},
+      {"action": "fullCommit", "actor": "alice", "byReference": [7], "members": ["bob", "charlie"]},
       
       {"action": "externalSignerProposal", "actor": "ds1", "member": "alice",
-       "description": { "proposalType": "externalPSK", "pskID": 5 } },
+       "description": { "proposalType": "externalPSK", "pskID": 3 } },
       {"action": "externalSignerProposal", "actor": "ds1", "member": "alice",
-       "description": { "proposalType": "externalPSK", "pskID": 6 } },
-      {"action": "fullCommit", "actor": "alice", "byReference": [8, 9], "members": ["bob", "charlie"] }
+       "description": { "proposalType": "externalPSK", "pskID": 4 } },
+      {"action": "fullCommit", "actor": "alice", "byReference": [9, 10], "members": ["bob", "charlie"] }
     ]
   }
 }

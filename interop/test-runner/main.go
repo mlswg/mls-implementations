@@ -227,6 +227,26 @@ func (s Script) Actors() []string {
 
 			actorMap[params.Joiner] = true
 		}
+
+		if step.Action == ActionSelfSignedAddProposal {
+			var params SelfSignedAddProposalStepParams
+			err := json.Unmarshal(step.Raw, &params)
+			if err != nil {
+				continue
+			}
+
+			actorMap[params.Joiner] = true
+		}
+
+		if step.Action == ActionAddExternalSigner {
+			var params AddExternalSignerStepParams
+			err := json.Unmarshal(step.Raw, &params)
+			if err != nil {
+				continue
+			}
+
+			actorMap[params.Signer] = true
+		}
 	}
 
 	actors := make([]string, 0, len(actorMap))
@@ -1052,7 +1072,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				return err
 			}
 
-			config.transactionID[step.Actor] = resp.TransactionId
+			config.transactionID[params.Joiner] = resp.TransactionId
 			config.StoreMessage(index, "proposal", resp.Proposal)
 			config.StoreMessage(index, "init_priv", resp.InitPriv)
 			config.StoreMessage(index, "encryption_priv", resp.EncryptionPriv)
