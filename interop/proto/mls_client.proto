@@ -37,6 +37,12 @@ service MLSClient {
   rpc Commit(CommitRequest) returns (CommitResponse) {}
   rpc HandleCommit(HandleCommitRequest) returns (HandleCommitResponse) {}
   rpc HandlePendingCommit(HandlePendingCommitRequest) returns (HandleCommitResponse) {}
+
+  // External proposals
+  rpc SelfSignedAddProposal(SelfSignedAddProposalRequest) returns (SelfSignedAddProposalResponse) {}
+  rpc CreateExternalSigner(CreateExternalSignerRequest) returns (CreateExternalSignerResponse) {}
+  rpc AddExternalSigner(AddExternalSignerRequest) returns (ProposalResponse) {}
+  rpc ExternalSignerProposal(ExternalSignerProposalRequest) returns (ProposalResponse) {}
 }
 
 // rpc Name
@@ -269,4 +275,41 @@ message HandleCommitResponse {
 // rpc HandlePendingCommit
 message HandlePendingCommitRequest {
   uint32 state_id = 1;
+}
+
+// rpc SelfSignedAddProposal
+message SelfSignedAddProposalRequest{
+  bytes group_info = 1;
+}
+
+message SelfSignedAddProposalResponse{
+  uint32 transaction_id = 1;
+  bytes proposal = 2;
+  bytes init_priv = 3;
+  bytes encryption_priv = 4;
+  bytes signature_priv = 5;
+}
+
+// rpc CreateExternalSigner
+message CreateExternalSignerRequest{
+  uint32 cipher_suite = 1;
+  bytes identity = 2;
+}
+
+message CreateExternalSignerResponse{
+  uint32 signer_id = 1;
+  bytes external_sender = 2;
+}
+
+// rpc AddExternalSignerProposal
+message AddExternalSignerRequest{
+  uint32 state_id = 1;
+  bytes external_sender = 2;
+}
+
+// rpc ExternalSignerProposal
+message ExternalSignerProposalRequest{
+  uint32 signer_id = 1;
+  bytes group_info = 2;
+  ProposalDescription description = 3;
 }

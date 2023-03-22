@@ -1,0 +1,68 @@
+{
+  "scripts": {
+    "joiner_signed_add": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "selfSignedAddProposal", "actor": "alice", "joiner": "bob" },
+      {"action": "fullCommit", "actor": "alice", "byReference": [1], "joiners": ["bob"] }
+    ],
+
+    "external_add": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+
+      {"action": "addExternalSigner", "actor": "alice", "signer": "ds"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [2], "members": ["bob"]},
+
+      {"action": "createKeyPackage", "actor": "charlie" },
+      {"action": "externalSignerProposal", "actor": "ds",, "member": "alice",
+       "description": { "proposalType": "add", "keyPackage": 4 } },
+      {"action": "fullCommit", "actor": "alice", "byReference": [5], "members": ["bob"], 
+       "joiners": ["charlie"] }
+    ],
+
+    "external_remove": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
+
+      {"action": "addExternalSigner", "actor": "alice", "signer": "ds"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [3], "members": ["bob", "charlie"]},
+
+      {"action": "externalSignerProposal", "actor": "ds", "member": "alice",
+       "description": { "proposalType": "remove", "removedID": "bob" } },
+      {"action": "fullCommit", "actor": "alice", "byReference": [5], "members": ["charlie"] }
+    ],
+
+    "external_psk": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
+      {"action": "installExternalPSK", "clients": ["alice", "bob", "charlie"]},
+      
+      {"action": "addExternalSigner", "actor": "alice", "signer": "ds"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [4], "members": ["bob", "charlie"]},
+      
+      {"action": "externalSignerProposal", "actor": "ds", "member": "alice",
+       "description": { "proposalType": "externalPSK", "pskID": 4 } },
+      {"action": "fullCommit", "actor": "alice", "byReference": [6], "members": ["bob", "charlie"] }
+    ],
+    
+    "multiple_external": [
+      {"action": "createGroup", "actor": "alice"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "bob"},
+      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
+      {"action": "installExternalPSK", "clients": ["alice", "bob", "charlie"]},
+      {"action": "installExternalPSK", "clients": ["alice", "bob", "charlie"]},
+      
+      {"action": "addExternalSigner", "actor": "alice", "signer": "ds1"},
+      {"action": "addExternalSigner", "actor": "alice", "signer": "ds2"},
+      {"action": "fullCommit", "actor": "alice", "byReference": [5, 6], "members": ["bob", "charlie"]},
+      
+      {"action": "externalSignerProposal", "actor": "ds1", "member": "alice",
+       "description": { "proposalType": "externalPSK", "pskID": 5 } },
+      {"action": "externalSignerProposal", "actor": "ds1", "member": "alice",
+       "description": { "proposalType": "externalPSK", "pskID": 6 } },
+      {"action": "fullCommit", "actor": "alice", "byReference": [8, 9], "members": ["bob", "charlie"] }
+    ]
+  }
+}

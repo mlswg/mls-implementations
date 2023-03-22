@@ -53,6 +53,9 @@ const (
 	ActionHandlePendingCommit            ScriptAction = "handlePendingCommit"
 	ActionProtect                        ScriptAction = "protect"
 	ActionUnprotect                      ScriptAction = "unprotect"
+	ActionSelfSignedAddProposal          ScriptAction = "selfSignedAddProposal"
+	ActionAddExternalSigner              ScriptAction = "addExternalSigner"
+	ActionExternalSignerProposal         ScriptAction = "externalSignerProposal"
 
 	TimeoutSeconds = 120
 )
@@ -166,6 +169,19 @@ type ProtectStepParams struct {
 
 type UnprotectStepParams struct {
 	Ciphertext int `json:"ciphertext"`
+}
+
+type SelfSignedAddProposalStepParams struct {
+	Joiner string `json:"joiner"`
+}
+
+type AddExternalSignerStepParams struct {
+	Signer string `json:"signer"`
+}
+
+type ExternalSignerProposalStepParams struct {
+	Member      string              `json:"member"`
+	Description ProposalDescription `json:"description"`
 }
 
 func (step *ScriptStep) UnmarshalJSON(data []byte) error {
@@ -368,6 +384,7 @@ type ScriptActorConfig struct {
 
 	stateID       map[string]uint32
 	transactionID map[string]uint32
+	signerID      map[string]uint32
 	transcript    []map[string]string
 }
 
@@ -1001,6 +1018,128 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.stateID[step.Actor] = resp.StateId
 
+	case ActionSelfSignedAddProposal:
+		var params SelfSignedAddProposalStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		// Get a GroupInfo from the `actor`
+		var groupInfo []byte
+		{
+			client := config.ActorClients[step.Actor]
+			req := &pb.GroupInfoRequest{
+				StateId: config.stateID[step.Actor],
+			}
+			resp, err := client.rpc.GroupInfo(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			groupInfo = resp.GroupInfo
+		}
+
+		// Get a self-signed Add proposal from the joiner
+		{
+			client := config.ActorClients[params.Joiner]
+			req := &pb.SelfSignedAddProposalRequest{
+				GroupInfo: groupInfo,
+			}
+			resp, err := client.rpc.SelfSignedAddProposal(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			config.transactionID[step.Actor] = resp.TransactionId
+			config.StoreMessage(index, "proposal", resp.Proposal)
+			config.StoreMessage(index, "init_priv", resp.InitPriv)
+			config.StoreMessage(index, "encryption_priv", resp.EncryptionPriv)
+			config.StoreMessage(index, "signature_priv", resp.SignaturePriv)
+		}
+
+	case ActionAddExternalSigner:
+		var params AddExternalSignerStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		// Create the external signer
+		var externalSender []byte
+		{
+			client := config.ActorClients[params.Signer]
+			req := &pb.CreateExternalSignerRequest{
+				CipherSuite: config.CipherSuite,
+				Identity:    []byte(params.Signer),
+			}
+			resp, err := client.rpc.CreateExternalSigner(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			config.signerID[params.Signer] = resp.SignerId
+			externalSender = resp.ExternalSender
+		}
+
+		// Create a GroupContextExtensions proposal adding the signer
+		{
+			client := config.ActorClients[step.Actor]
+			req := &pb.AddExternalSignerRequest{
+				StateId:        config.stateID[step.Actor],
+				ExternalSender: externalSender,
+			}
+			resp, err := client.rpc.AddExternalSigner(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			config.StoreMessage(index, "proposal", resp.Proposal)
+		}
+
+	case ActionExternalSignerProposal:
+		var params ExternalSignerProposalStepParams
+		err := json.Unmarshal(step.Raw, &params)
+		if err != nil {
+			return err
+		}
+
+		// Get a GroupInfo from the `member`
+		var groupInfo []byte
+		{
+			client := config.ActorClients[params.Member]
+			req := &pb.GroupInfoRequest{
+				StateId: config.stateID[params.Member],
+			}
+			resp, err := client.rpc.GroupInfo(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			groupInfo = resp.GroupInfo
+		}
+
+		// Get a proposal from the `actor`
+		{
+			client := config.ActorClients[step.Actor]
+			description, err := params.Description.ProposalDescriptionToProto(config)
+			if err != nil {
+				return err
+			}
+
+			req := &pb.ExternalSignerProposalRequest{
+				SignerId:    config.signerID[step.Actor],
+				GroupInfo:   groupInfo,
+				Description: description,
+			}
+			resp, err := client.rpc.ExternalSignerProposal(ctx(), req)
+			if err != nil {
+				return err
+			}
+
+			config.StoreMessage(index, "proposal", resp.Proposal)
+		}
+
 	default:
 		return fmt.Errorf("Unknown action: %s", step.Action)
 	}
@@ -1011,6 +1150,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	config.stateID = map[string]uint32{}
 	config.transactionID = map[string]uint32{}
+	config.signerID = map[string]uint32{}
 	config.transcript = make([]map[string]string, len(script))
 
 	for i := range config.transcript {
