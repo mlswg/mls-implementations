@@ -1105,12 +1105,14 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			return err
 		}
 
-		// Get a GroupInfo from the `member`
+		// Get GroupInfo and ratchet tree from the `member`
 		var groupInfo []byte
+		var ratchetTree []byte
 		{
 			client := config.ActorClients[params.Member]
 			req := &pb.GroupInfoRequest{
-				StateId: config.stateID[params.Member],
+				StateId:      config.stateID[params.Member],
+				ExternalTree: true,
 			}
 			resp, err := client.rpc.GroupInfo(ctx(), req)
 			if err != nil {
@@ -1118,6 +1120,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			}
 
 			groupInfo = resp.GroupInfo
+			ratchetTree = resp.RatchetTree
 		}
 
 		// Get a proposal from the `actor`
@@ -1131,6 +1134,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			req := &pb.ExternalSignerProposalRequest{
 				SignerId:    config.signerID[step.Actor],
 				GroupInfo:   groupInfo,
+				RatchetTree: ratchetTree,
 				Description: description,
 			}
 			resp, err := client.rpc.ExternalSignerProposal(ctx(), req)

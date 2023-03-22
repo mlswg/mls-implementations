@@ -308,9 +308,16 @@ message AddExternalSignerRequest{
   bytes external_sender = 2;
 }
 
+message AddExternalSignerResponse {
+  bytes proposal = 1;
+  uint32 signer_index = 2;
+}
+
 // rpc ExternalSignerProposal
 message ExternalSignerProposalRequest{
   uint32 signer_id = 1;
-  bytes group_info = 2;
-  ProposalDescription description = 3;
+  uint32 signer_index = 2;
+  bytes group_info = 3;
+  bytes ratchet_tree = 4;
+  ProposalDescription description = 5;
 }
