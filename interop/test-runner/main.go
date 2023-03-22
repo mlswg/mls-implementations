@@ -53,7 +53,7 @@ const (
 	ActionHandlePendingCommit            ScriptAction = "handlePendingCommit"
 	ActionProtect                        ScriptAction = "protect"
 	ActionUnprotect                      ScriptAction = "unprotect"
-	ActionSelfSignedAddProposal          ScriptAction = "selfSignedAddProposal"
+	ActionNewMemberAddProposal           ScriptAction = "newMemberAddProposal"
 	ActionAddExternalSigner              ScriptAction = "addExternalSigner"
 	ActionExternalSignerProposal         ScriptAction = "externalSignerProposal"
 
@@ -171,7 +171,7 @@ type UnprotectStepParams struct {
 	Ciphertext int `json:"ciphertext"`
 }
 
-type SelfSignedAddProposalStepParams struct {
+type NewMemberAddProposalStepParams struct {
 	Joiner string `json:"joiner"`
 }
 
@@ -228,8 +228,8 @@ func (s Script) Actors() []string {
 			actorMap[params.Joiner] = true
 		}
 
-		if step.Action == ActionSelfSignedAddProposal {
-			var params SelfSignedAddProposalStepParams
+		if step.Action == ActionNewMemberAddProposal {
+			var params NewMemberAddProposalStepParams
 			err := json.Unmarshal(step.Raw, &params)
 			if err != nil {
 				continue
@@ -1038,8 +1038,8 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.stateID[step.Actor] = resp.StateId
 
-	case ActionSelfSignedAddProposal:
-		var params SelfSignedAddProposalStepParams
+	case ActionNewMemberAddProposal:
+		var params NewMemberAddProposalStepParams
 		err := json.Unmarshal(step.Raw, &params)
 		if err != nil {
 			return err
@@ -1063,11 +1063,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		// Get a self-signed Add proposal from the joiner
 		{
 			client := config.ActorClients[params.Joiner]
-			req := &pb.SelfSignedAddProposalRequest{
+			req := &pb.NewMemberAddProposalRequest{
 				GroupInfo: groupInfo,
 				Identity:  []byte(params.Joiner),
 			}
-			resp, err := client.rpc.SelfSignedAddProposal(ctx(), req)
+			resp, err := client.rpc.NewMemberAddProposal(ctx(), req)
 			if err != nil {
 				return err
 			}

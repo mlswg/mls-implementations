@@ -39,7 +39,7 @@ service MLSClient {
   rpc HandlePendingCommit(HandlePendingCommitRequest) returns (HandleCommitResponse) {}
 
   // External proposals
-  rpc SelfSignedAddProposal(SelfSignedAddProposalRequest) returns (SelfSignedAddProposalResponse) {}
+  rpc NewMemberAddProposal(NewMemberAddProposalRequest) returns (NewMemberAddProposalResponse) {}
   rpc CreateExternalSigner(CreateExternalSignerRequest) returns (CreateExternalSignerResponse) {}
   rpc AddExternalSigner(AddExternalSignerRequest) returns (ProposalResponse) {}
   rpc ExternalSignerProposal(ExternalSignerProposalRequest) returns (ProposalResponse) {}
@@ -277,13 +277,13 @@ message HandlePendingCommitRequest {
   uint32 state_id = 1;
 }
 
-// rpc SelfSignedAddProposal
-message SelfSignedAddProposalRequest{
+// rpc NewMemberAddProposal
+message NewMemberAddProposalRequest{
   bytes group_info = 1;
   bytes identity = 2;
 }
 
-message SelfSignedAddProposalResponse{
+message NewMemberAddProposalResponse{
   uint32 transaction_id = 1;
   bytes proposal = 2;
   bytes init_priv = 3;

@@ -2,7 +2,7 @@
   "scripts": {
     "joiner_signed_add": [
       {"action": "createGroup", "actor": "alice"},
-      {"action": "selfSignedAddProposal", "actor": "alice", "joiner": "bob" },
+      {"action": "newMemberAddProposal", "actor": "alice", "joiner": "bob" },
       {"action": "fullCommit", "actor": "alice", "byReference": [1], "joiners": ["bob"] }
     ],
 
