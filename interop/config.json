@@ -8,7 +8,7 @@
           {"action": "fullCommit", "actor": "alice", "byReference": [2], "byValue": [{"proposalType": "add", "keyPackage": 3}], "joiners": ["bob", "charlie"]},
           {"action": "fullCommit", "actor": "alice", "byValue": [{"proposalType": "remove", "removed": "bob"}], "members": ["charlie"]},
           {"action": "protect", "actor": "alice", "plaintext": "hello"},
-          {"action": "unprotect", "actor": "charlie", "ciphertext": 7}
+          {"action": "unprotect", "actor": "charlie", "ciphertext": 6}
         ]
   }
 }
