@@ -31,12 +31,19 @@ service MLSClient {
   rpc RemoveProposal(RemoveProposalRequest) returns (ProposalResponse) {}
   rpc ExternalPSKProposal(ExternalPSKProposalRequest) returns (ProposalResponse) {}
   rpc ResumptionPSKProposal(ResumptionPSKProposalRequest) returns (ProposalResponse) {}
-  rpc ReInitProposal(ReInitProposalRequest) returns (ProposalResponse) {}
   rpc GroupContextExtensionsProposal(GroupContextExtensionsProposalRequest) returns (ProposalResponse) {}
   
   rpc Commit(CommitRequest) returns (CommitResponse) {}
   rpc HandleCommit(HandleCommitRequest) returns (HandleCommitResponse) {}
   rpc HandlePendingCommit(HandlePendingCommitRequest) returns (HandleCommitResponse) {}
+
+  // Reinitialization
+  rpc ReInitProposal(ReInitProposalRequest) returns (ProposalResponse) {}
+  rpc ReInitCommit(CommitRequest) returns (CommitResponse) {}
+  rpc HandlePendingReInitCommit(HandlePendingCommitRequest) returns (HandleReInitCommitResponse) {}
+  rpc HandleReInitCommit(HandleCommitRequest) returns (HandleReInitCommitResponse) {}
+  rpc ReInitWelcome(ReInitWelcomeRequest) returns (ReInitWelcomeResponse) {}
+  rpc HandleReInitWelcome(HandleReInitWelcomeRequest) returns (JoinGroupResponse) {}
 }
 
 // rpc Name
@@ -211,13 +218,6 @@ message ResumptionPSKProposalRequest {
   uint64 epoch_id = 2;
 }
 
-// rpc ReInitProposal
-message ReInitProposalRequest {
-  uint32 state_id = 1;
-  bytes group_id = 2;
-  uint32 cipher_suite = 3; // actually uint16
-}
-
 // rpc GroupContextExtensionsProposal
 message Extension {
   uint32 extension_type = 1;
@@ -270,3 +270,46 @@ message HandleCommitResponse {
 message HandlePendingCommitRequest {
   uint32 state_id = 1;
 }
+
+// rpc ReInitProposal
+message ReInitProposalRequest {
+  uint32 state_id = 1;
+  uint32 cipher_suite = 2;
+  bytes group_id = 3;
+  repeated Extension extensions = 4;
+}
+
+// rpc ReInitCommit
+// (uses CommitRequest / CommitResponse)
+
+// rpc HandlePendingReInitCommit
+// rpc HandleReInitCommit
+// (uses HandleCommitRequest)
+message HandleReInitCommitResponse {
+  uint32 reinit_id = 1;
+  bytes key_package = 2;
+  bytes epoch_authenticator = 3;
+}
+
+// rpc ReInitWelcome
+message ReInitWelcomeRequest {
+  uint32 reinit_id = 1;
+  repeated bytes key_package = 2;
+  bool force_path = 3;
+  bool external_tree = 4;
+}
+
+message ReInitWelcomeResponse {
+  uint32 state_id = 1;
+  bytes welcome = 2;
+  bytes ratchet_tree = 3;
+  bytes epoch_authenticator = 4;
+}
+
+// rpc HandleReInitWelcome
+message HandleReInitWelcomeRequest {
+  uint32 reinit_id = 1;
+  bytes welcome = 2;
+  bytes ratchet_tree = 3;
+}
+
