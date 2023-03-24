@@ -255,9 +255,10 @@ type ScriptResult struct {
 	Actors           map[string]string `json:"actors"`
 	EncryptHandshake bool              `json:"encrypt_flag"`
 
-	Transcript []map[string]string `json:"transcript,omitempty"`
-	Error      interface{}         `json:"error,omitempty"`
-	FailedStep *int                `json:"failed_step,omitempty"`
+	Transcript     []map[string]string `json:"transcript,omitempty"`
+	Error          interface{}         `json:"error,omitempty"`
+	FailedStep     *int                `json:"failed_step,omitempty"`
+	FailedStepJSON string              `json:"failed_step_json,omitempty"`
 }
 
 type ScriptResults []ScriptResult
@@ -1164,9 +1165,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			keyPackages[member] = resp.KeyPackage
 		}
 
-		fmt.Printf("reinitIDs: %+v\n", reinitIDs)
-		fmt.Printf("keyPackages: %+v\n", keyPackages)
-
 		// Have the welcomer create the Welcome
 		// XXX(RLB) Note that this assumes that the welcomer will advance its state
 		// as a side effect of `ReInitWelcome()`
@@ -1338,6 +1336,7 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 			result.Error = err.Error()
 			result.FailedStep = new(int)
 			*result.FailedStep = i
+			result.FailedStepJSON = string(step.Raw)
 			return result
 		}
 	}
