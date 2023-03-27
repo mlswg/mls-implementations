@@ -48,6 +48,12 @@ service MLSClient {
   // Subgroup Branching
   rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse) {}
   rpc HandleBranch(HandleBranchRequest) returns (HandleBranchResponse) {}
+
+  // External proposals
+  rpc NewMemberAddProposal(NewMemberAddProposalRequest) returns (NewMemberAddProposalResponse) {}
+  rpc CreateExternalSigner(CreateExternalSignerRequest) returns (CreateExternalSignerResponse) {}
+  rpc AddExternalSigner(AddExternalSignerRequest) returns (ProposalResponse) {}
+  rpc ExternalSignerProposal(ExternalSignerProposalRequest) returns (ProposalResponse) {}
 }
 
 // rpc Name
@@ -346,4 +352,49 @@ message HandleBranchRequest {
 message HandleBranchResponse {
   uint32 state_id = 1;
   bytes epoch_authenticator = 2;
+}
+
+// rpc NewMemberAddProposal
+message NewMemberAddProposalRequest{
+  bytes group_info = 1;
+  bytes identity = 2;
+}
+
+message NewMemberAddProposalResponse{
+  uint32 transaction_id = 1;
+  bytes proposal = 2;
+  bytes init_priv = 3;
+  bytes encryption_priv = 4;
+  bytes signature_priv = 5;
+}
+
+// rpc CreateExternalSigner
+message CreateExternalSignerRequest{
+  uint32 cipher_suite = 1;
+  bytes identity = 2;
+}
+
+message CreateExternalSignerResponse{
+  uint32 signer_id = 1;
+  bytes external_sender = 2;
+}
+
+// rpc AddExternalSignerProposal
+message AddExternalSignerRequest{
+  uint32 state_id = 1;
+  bytes external_sender = 2;
+}
+
+message AddExternalSignerResponse {
+  bytes proposal = 1;
+  uint32 signer_index = 2;
+}
+
+// rpc ExternalSignerProposal
+message ExternalSignerProposalRequest{
+  uint32 signer_id = 1;
+  uint32 signer_index = 2;
+  bytes group_info = 3;
+  bytes ratchet_tree = 4;
+  ProposalDescription description = 5;
 }
