@@ -42,11 +42,11 @@ service MLSClient {
   rpc ReInitCommit(CommitRequest) returns (CommitResponse) {}
   rpc HandlePendingReInitCommit(HandlePendingCommitRequest) returns (HandleReInitCommitResponse) {}
   rpc HandleReInitCommit(HandleCommitRequest) returns (HandleReInitCommitResponse) {}
-  rpc ReInitWelcome(ReInitWelcomeRequest) returns (ReInitWelcomeResponse) {}
+  rpc ReInitWelcome(ReInitWelcomeRequest) returns (CreateSubgroupResponse) {}
   rpc HandleReInitWelcome(HandleReInitWelcomeRequest) returns (JoinGroupResponse) {}
 
   // Subgroup Branching
-  rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse) {}
+  rpc CreateBranch(CreateBranchRequest) returns (CreateSubgroupResponse) {}
   rpc HandleBranch(HandleBranchRequest) returns (HandleBranchResponse) {}
 
   // External proposals
@@ -239,13 +239,18 @@ message GroupContextExtensionsProposalRequest {
   repeated Extension extensions = 2;
 }
 
+// `proposal_type` is one of "add", "remove", "externalPSK", "resumptionPSK",
+// "groupContextExtensions", "reinit". The type "reinit" can only be used in
+// rpc ExternalSignerProposal.
 message ProposalDescription {
-  bytes proposal_type = 1; // One of "add", "remove", "externalPSK", "resumptionPSK", "groupContextExtensions"
+  bytes proposal_type = 1;
   bytes key_package = 2; // Required if proposal_type is "add"
   bytes removed_id = 3; // Required if proposal_type is "remove"
   bytes psk_id = 4; // Required if proposal_type is "externalPSK"
   uint64 epoch_id = 5; // Required if proposal_type is "resumptionPSK"
-  repeated Extension extensions = 6; // Required if proposal_type is "groupContextExtensions"
+  repeated Extension extensions = 6; // Required if proposal_type is "groupContextExtensions" or "reinit"
+  bytes group_id = 7; // Required if proposal_type is "reinit"
+  uint32 cipher_suite = 8; // Required if proposal_type is "reinit"
 }
 
 // rpc Commit
@@ -309,7 +314,7 @@ message ReInitWelcomeRequest {
   bool external_tree = 4;
 }
 
-message ReInitWelcomeResponse {
+message CreateSubgroupResponse {
   uint32 state_id = 1;
   bytes welcome = 2;
   bytes ratchet_tree = 3;
@@ -325,6 +330,7 @@ message HandleReInitWelcomeRequest {
 
 
 // rpc CreateBranch
+// (uses CreateSubgroupResponse)
 message CreateBranchRequest {
   uint32 state_id = 1;
   bytes group_id = 2;
@@ -332,13 +338,6 @@ message CreateBranchRequest {
   repeated bytes key_packages = 4;
   bool force_path = 5;
   bool external_tree = 6;
-}
-
-message CreateBranchResponse {
-  uint32 state_id = 1;
-  bytes welcome = 2;
-  bytes ratchet_tree = 3;
-  bytes epoch_authenticator = 4;
 }
 
 // rpc CreateBranch
