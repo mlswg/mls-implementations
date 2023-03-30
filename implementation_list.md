@@ -5,7 +5,7 @@
  - [Wickr](https://wickr.com/) proprietary implementation (Rust) (Status: draft-17 in progress)
  - [RingCentral](https://www.ringcentral.com/) proprietary implementation (C++) (Status: draft-11; draft-17 in progress)
  - `MLS*` (F*) (Status: draft-16)
- - BouncyCastle (Java) (Status: draft-20 in progress)
+ - [BouncyCastle](https://github.com/bcgit/bc-java/issues/1317) (Java) (Status: draft-20 in progress)
 
 ## Older / out of date links
 
