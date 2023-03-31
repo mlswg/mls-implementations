@@ -1,9 +1,8 @@
 // Convert a transcript of an active test to a passive client test vector file
 //
-// Usage: node active_to_passive.js config.json trasncript.json >test-vector.json
+// Usage: node active_to_passive.js <results.json >test-vector.json
 //
-// The file <config.json> should be in the format taken as input by `test-runner`.
-// The file <transcript.json> should be in the format output by `test-runner`.
+// The file <results.json> should be in the format output by `test-runner`.
 // The resulting test vector file is written to stdout.
 //
 // For each test case (combination of clients / encryption / ciphersuite), and
@@ -16,31 +15,22 @@
 
 const fs = require('fs');
 
-// Load the required files
-const configFile = fs.readFileSync(process.argv[2]);
-const transcriptFile = fs.readFileSync(process.argv[3]);
-
-const config = JSON.parse(configFile);
-const transcript = JSON.parse(transcriptFile);
+// Load the live test results from stdin
+const resultsFile = fs.readFileSync(0, "utf-8");
+const results = JSON.parse(resultsFile);
 
 // Translate the test cases
 const passiveTests = [];
-for (let scriptName in config.scripts) {
-  if (!transcript.scripts[scriptName]) {
-    console.error(`Unknown script name "${scriptName}"`);
-    continue;
-  }
+for (const scriptName in results.scripts) {
+  for (const testCase of results.scripts[scriptName]) {
+    // Identify the actors that join via Welcome
+    const rpcs = testCase.transcript;
+    const passiveActors = rpcs.filter(rpc => rpc.rpc == "JoinGroup")
+                              .map(rpc => rpc.actor);
 
-  // Identify the actors that join via Welcome
-  const steps = config.scripts[scriptName];
-  const passiveActors = steps.filter(step => step.action == "fullCommit" && step.joiners)
-                             .map(step => step.joiners)
-                             .reduce((a, b) => a.concat(b));
-
-  // Construct test cases from passive vantage points
-  for (let testCase of transcript.scripts[scriptName]) {
-    for (let actor of passiveActors) {
-      let passiveTest = activeToPassive(steps, testCase, actor);
+    // Construct a passive test from each vantage point
+    for (const actor of passiveActors) {
+      const passiveTest = activeToPassive(testCase.cipher_suite, actor, rpcs);
       if (!passiveTest) {
         continue;
       }
@@ -54,63 +44,73 @@ console.log(JSON.stringify(passiveTests, null, 2));
 
 //////// Translation Logic //////////
 
-function activeToPassive(rawSteps, testCase, actor) {
-  // Identify where in the transcript we should look for relevant data
-  const steps = rawSteps.map((step, i) => { step.transcriptIndex = i; return step; });
-  const kpSteps = steps.filter(step => step.action == "createKeyPackage" && step.actor == actor);
-  const pskSteps = steps.filter(step => step.action == "installExternalPSK" && step.clients && step.clients.includes(actor));
-  const joinSteps = steps.filter(step => step.action == "fullCommit" && step.joiners && step.joiners.includes(actor));
-  const commitSteps = steps.filter(step => step.action == "fullCommit" && step.members && step.members.includes(actor));
+function base64ToHex(b64) {
+  return Buffer.from(b64, "base64").toString("hex");
+}
 
-  if (kpSteps.length == 0 || joinSteps.length == 0) {
-    console.warn("Actor did not join via Welcome", actor);
-    return;
+function activeToPassive(cipher_suite, actor, allRPCs) {
+  let rpcs = allRPCs.filter(rpc => rpc.actor == actor);
+
+  // Filter out PSK RPCs
+  const storePSKRPCs = rpcs.filter(rpc => rpc.rpc == "StorePSK");
+  rpcs = rpcs.filter(rpc => rpc.rpc != "StorePSK");
+
+  // We require the following sequence:
+  // * CreateKeyPackage
+  // * JoinGroup
+  // * [HandleCommit | InstallExternalPSK]*
+  if (rpcs[0].rpc != "CreateKeyPackage" || rpcs[1].rpc != "JoinGroup") {
+    // TODO(RLB) Add support for NewMemberAddProposal
+    if (rpcs[0].rpc == "NewMemberAddProposal") {
+      return;
+    }
+
+    throw "Invalid passive member";
   }
-  
-  // Grab private data
-  const passiveTest = {
-    cipher_suite: testCase.cipher_suite,
-  };
-  const transcript = testCase.transcript;
-  
-  // Grab private state from createKeyPackage step in transcript
-  const kpTranscript = transcript[kpSteps[0].transcriptIndex];
-  passiveTest.key_package = kpTranscript.key_package;
-  passiveTest.init_priv = kpTranscript.init_priv;
-  passiveTest.encryption_priv = kpTranscript.encryption_priv;
-  passiveTest.signature_priv = kpTranscript.signature_priv;
-  
-  // Grab welcome, ratchet tree, and epoch authenticator from joinGroup
-  const joinTranscript = transcript[joinSteps[0].transcriptIndex];
-  passiveTest.welcome = joinTranscript.welcome;
-  passiveTest.initial_epoch_authenticator = joinTranscript.epoch_authenticator;
+
+  const end = rpcs.slice(2).find(rpc => rpc.rpc != "HandleCommit");
+  const handleCommitRPCs = rpcs.slice(2).slice(0, end);
+
+  // Grab private data from the CreateKeyPackage response
+  const passiveTest = { cipher_suite };
+  passiveTest.key_package = base64ToHex(rpcs[0].response.key_package);
+  passiveTest.init_priv = base64ToHex(rpcs[0].response.init_priv);
+  passiveTest.encryption_priv = base64ToHex(rpcs[0].response.encryption_priv);
+  passiveTest.signature_priv = base64ToHex(rpcs[0].response.signature_priv);
+
+  // Grab welcome, ratchet tree and initial epoch authenticator from the
+  // JoinGroup request
+  passiveTest.welcome = base64ToHex(rpcs[1].request.welcome);
 
   passiveTest.ratchet_tree = null;
-  if (joinTranscript.ratchet_tree.length > 0) {
-    passiveTest.ratchet_tree = joinTranscript.ratchet_tree;
+  if (rpcs[1].request.ratchet_tree) {
+    passiveTest.ratchet_tree = base64ToHex(rpcs[1].request.ratchet_tree);
   }
-  
-  // Grab any PSKs that were sent to this client
-  passiveTest.external_psks = pskSteps.map(step => transcript[step.transcriptIndex])
-    .map(txStep => { 
-      return {
-        psk_id: txStep.psk_id,
-        psk: txStep.psk_secret,
-      }; 
-    });
 
-  // Grab Commits 
-  passiveTest.epochs = [];
-  for (let step of commitSteps) {
-    const commitTranscript = transcript[step.transcriptIndex];
-    const proposals = step.byReference.map(i => transcript[i].proposal);
+  passiveTest.initial_epoch_authenticator = base64ToHex(rpcs[1].response.epoch_authenticator);
 
-    passiveTest.epochs.push({
-      proposals,
-      commit: commitTranscript.commit,
-      epoch_authenticator: commitTranscript.epoch_authenticator,
-    });
-  }
+  // Install any required external PSKs
+  passiveTest.external_psks = storePSKRPCs.map(rpc => {
+    return {
+      psk_id: base64ToHex(rpc.request.psk_id),
+      psk: base64ToHex(rpc.request.psk_secret),
+    };
+  });
+
+  // Handle commits
+  passiveTest.epochs = handleCommitRPCs.map(rpc => {
+    const epoch = {
+      commit: base64ToHex(rpc.request.commit),
+      epoch_authenticator: base64ToHex(rpc.response.epoch_authenticator),
+    };
+
+    epoch.proposals = [];
+    if (rpc.request.proposal) {
+      epoch.proposals = rpc.request.proposal.map(base64ToHex);
+    }
+
+    return epoch;
+  });
 
   return passiveTest;
 }

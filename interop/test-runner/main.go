@@ -300,15 +300,23 @@ type RunConfig struct {
 // /
 // / Results
 // /
+
+type RPCTranscriptEntry struct {
+	Actor    string      `json:"actor"`
+	RPC      string      `json:"rpc"`
+	Request  interface{} `json:"request"`
+	Response interface{} `json:"response"`
+}
+
 type ScriptResult struct {
 	CipherSuite      uint32            `json:"cipher_suite"`
 	Actors           map[string]string `json:"actors"`
 	EncryptHandshake bool              `json:"encrypt_flag"`
 
-	Transcript     []map[string]string `json:"transcript,omitempty"`
-	Error          interface{}         `json:"error,omitempty"`
-	FailedStep     *int                `json:"failed_step,omitempty"`
-	FailedStepJSON string              `json:"failed_step_json,omitempty"`
+	Transcript     []RPCTranscriptEntry `json:"transcript,omitempty"`
+	Error          interface{}          `json:"error,omitempty"`
+	FailedStep     *int                 `json:"failed_step,omitempty"`
+	FailedStepJSON string               `json:"failed_step_json,omitempty"`
 }
 
 type ScriptResults []ScriptResult
@@ -441,15 +449,20 @@ type ScriptActorConfig struct {
 	stateID       map[string]uint32
 	transactionID map[string]uint32
 	signerID      map[string]uint32
-	transcript    []map[string]string
+	messageCache  []map[string]string
+	transcript    []RPCTranscriptEntry
+}
+
+func (config *ScriptActorConfig) Log(actor string, rpc string, request, response interface{}) {
+	config.transcript = append(config.transcript, RPCTranscriptEntry{actor, rpc, request, response})
 }
 
 func (config *ScriptActorConfig) StoreMessage(index int, key string, message []byte) {
-	config.transcript[index][key] = hex.EncodeToString(message)
+	config.messageCache[index][key] = hex.EncodeToString(message)
 }
 
 func (config *ScriptActorConfig) GetMessage(index int, key string) ([]byte, error) {
-	messageHex, ok := config.transcript[index][key]
+	messageHex, ok := config.messageCache[index][key]
 	if !ok {
 		return nil, fmt.Errorf("No message for key %s at step %d", key, index)
 	}
@@ -463,7 +476,7 @@ func (config *ScriptActorConfig) GetMessage(index int, key string) ([]byte, erro
 }
 
 func (config *ScriptActorConfig) StoreInteger(index int, key string, integer uint32) {
-	config.transcript[index][key] = strconv.FormatUint(uint64(integer), 10)
+	config.messageCache[index][key] = strconv.FormatUint(uint64(integer), 10)
 }
 
 func (config *ScriptActorConfig) NewGroupID(changeId bool) ([]byte, error) {
@@ -529,6 +542,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "CreateGroup", req, resp)
 
 		config.stateID[step.Actor] = resp.StateId
 		config.StoreMessage(index, "group_id", groupID)
@@ -543,6 +557,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "CreateKeyPackage", req, resp)
 
 		config.transactionID[step.Actor] = resp.TransactionId
 		config.StoreMessage(index, "key_package", resp.KeyPackage)
@@ -574,11 +589,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			EncryptHandshake: config.EncryptHandshake,
 			Identity:         []byte(step.Actor),
 		}
-
 		resp, err := client.rpc.JoinGroup(ctx(), req)
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "JoinGroup", req, resp)
 
 		config.stateID[step.Actor] = resp.StateId
 
@@ -602,6 +617,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(step.Actor, "GroupInfo", req, resp)
 
 			groupInfo = resp.GroupInfo
 			ratchetTree = resp.RatchetTree
@@ -642,6 +658,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(params.Joiner, "ExternalJoin", req, resp)
 
 			config.stateID[params.Joiner] = resp.StateId
 
@@ -664,6 +681,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(member, "HandleCommit", req, resp)
 
 			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
 				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
@@ -702,10 +720,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				PskId:                pskID,
 				PskSecret:            pskSecret,
 			}
-			_, err := client.rpc.StorePSK(ctx(), req)
+			resp, err := client.rpc.StorePSK(ctx(), req)
 			if err != nil {
 				return err
 			}
+			config.Log(clientName, "StorePSK", req, resp)
 		}
 
 	case ActionGroupInfo:
@@ -724,6 +743,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "GroupInfo", req, resp)
 
 		config.StoreMessage(index, "group_info", resp.GroupInfo)
 		config.StoreMessage(index, "ratchet_tree", resp.RatchetTree)
@@ -749,6 +769,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "AddProposal", req, resp)
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
@@ -765,12 +786,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			StateId:   config.stateID[step.Actor],
 			RemovedId: []byte(params.Removed),
 		}
-
 		resp, err := client.rpc.RemoveProposal(ctx(), req)
-
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "RemoveProposal", req, resp)
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
@@ -780,12 +800,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		req := &pb.UpdateProposalRequest{
 			StateId: config.stateID[step.Actor],
 		}
-
 		resp, err := client.rpc.UpdateProposal(ctx(), req)
-
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "UpdateProposal", req, resp)
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
@@ -810,6 +829,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "ExternalPSKProposal", req, resp)
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
@@ -829,6 +849,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "ResumptionPSKProposal", req, resp)
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
@@ -845,12 +866,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			StateId:    config.stateID[step.Actor],
 			Extensions: params.Extensions,
 		}
-
 		resp, err := client.rpc.GroupContextExtensionsProposal(ctx(), req)
-
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "GroupContextExtensionsProposal", req, resp)
 
 		config.StoreMessage(index, "proposal", resp.Proposal)
 
@@ -890,6 +910,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "Commit", commitReq, commitResp)
 
 		config.StoreMessage(index, "welcome", commitResp.Welcome)
 		config.StoreMessage(index, "commit", commitResp.Commit)
@@ -903,11 +924,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			req := &pb.HandlePendingCommitRequest{
 				StateId: config.stateID[step.Actor],
 			}
-
 			resp, err := client.rpc.HandlePendingCommit(ctx(), req)
 			if err != nil {
 				return err
 			}
+			config.Log(step.Actor, "HandlePendingCommit", req, resp)
 
 			config.stateID[step.Actor] = resp.StateId
 			epochAuthenticator = resp.EpochAuthenticator
@@ -927,6 +948,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(member, "HandleCommit", req, resp)
 
 			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
 				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
@@ -959,6 +981,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(joiner, "JoinGroup", req, resp)
 
 			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
 				return fmt.Errorf("Joiner [%s] failed to agree on epoch authenticator", joiner)
@@ -1002,6 +1025,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "Commit", req, resp)
 
 		config.StoreMessage(index, "commit", resp.Commit)
 		config.StoreMessage(index, "welcome", resp.Welcome)
@@ -1028,6 +1052,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "Protect", req, resp)
 
 		config.StoreMessage(index, "authenticatedData", authenticatedData)
 		config.StoreMessage(index, "plaintext", plaintext)
@@ -1054,6 +1079,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "Unprotect", req, resp)
 
 		authenticatedData, err := config.GetMessage(params.Ciphertext, "authenticatedData")
 		if err != nil {
@@ -1106,6 +1132,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "HandleCommit", req, resp)
 
 		config.stateID[step.Actor] = resp.StateId
 
@@ -1115,12 +1142,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		req := &pb.HandlePendingCommitRequest{
 			StateId: config.stateID[step.Actor],
 		}
-
 		resp, err := client.rpc.HandlePendingCommit(ctx(), req)
-
 		if err != nil {
 			return err
 		}
+		config.Log(step.Actor, "HandlePendingCommit", req, resp)
 
 		config.stateID[step.Actor] = resp.StateId
 
@@ -1177,6 +1203,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(params.Proposer, "ReInitProposal", req, resp)
 
 			proposal = resp.Proposal
 		} else {
@@ -1203,17 +1230,18 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(params.Committer, "ReInitCommit", commitReq, commitResp)
 
 			commit = commitResp.Commit
 
-			handleReq := &pb.HandlePendingCommitRequest{
+			req := &pb.HandlePendingCommitRequest{
 				StateId: config.stateID[params.Committer],
 			}
-
-			resp, err := client.rpc.HandlePendingReInitCommit(ctx(), handleReq)
+			resp, err := client.rpc.HandlePendingReInitCommit(ctx(), req)
 			if err != nil {
 				return err
 			}
+			config.Log(params.Committer, "HandlePendingReInitCommit", req, resp)
 
 			reinitIDs[params.Committer] = resp.ReinitId
 			keyPackages[params.Committer] = resp.KeyPackage
@@ -1232,6 +1260,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(member, "HandleReInitCommit", req, resp)
 
 			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
 				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
@@ -1264,6 +1293,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(params.Welcomer, "ReInitWelcome", req, resp)
 
 			config.stateID[params.Welcomer] = resp.StateId
 			welcome = resp.Welcome
@@ -1285,6 +1315,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(member, "HandleReInitWelcome", req, resp)
 
 			if !bytes.Equal(resp.EpochAuthenticator, reinitEpochAuthenticator) {
 				return fmt.Errorf("Member [%s] failed to agree on reinit epoch authenticator", member)
@@ -1319,6 +1350,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(member, "CreateKeyPackage", req, resp)
 
 			transactionIDs[member] = resp.TransactionId
 			keyPackages = append(keyPackages, resp.KeyPackage)
@@ -1342,6 +1374,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(step.Actor, "CreateBranch", req, resp)
 
 			welcome = resp.Welcome
 			epochAuthenticator = resp.EpochAuthenticator
@@ -1365,6 +1398,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(member, "HandleBranch", req, resp)
 
 			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
 				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
@@ -1391,6 +1425,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(step.Actor, "GroupInfo", req, resp)
 
 			groupInfo = resp.GroupInfo
 		}
@@ -1406,6 +1441,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(params.Joiner, "NewMemberAddProposal", req, resp)
 
 			config.transactionID[params.Joiner] = resp.TransactionId
 			config.StoreMessage(index, "proposal", resp.Proposal)
@@ -1433,6 +1469,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(params.Signer, "CreateExternalSigner", req, resp)
 
 			config.signerID[params.Signer] = resp.SignerId
 			externalSender = resp.ExternalSender
@@ -1449,6 +1486,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(step.Actor, "AddExternalSigner", req, resp)
 
 			config.StoreMessage(index, "proposal", resp.Proposal)
 		}
@@ -1473,6 +1511,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(params.Member, "GroupInfo", req, resp)
 
 			groupInfo = resp.GroupInfo
 			ratchetTree = resp.RatchetTree
@@ -1496,6 +1535,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			if err != nil {
 				return err
 			}
+			config.Log(step.Actor, "ExternalSignerProposal", req, resp)
 
 			config.StoreMessage(index, "proposal", resp.Proposal)
 		}
@@ -1511,10 +1551,10 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	config.stateID = map[string]uint32{}
 	config.transactionID = map[string]uint32{}
 	config.signerID = map[string]uint32{}
-	config.transcript = make([]map[string]string, len(script))
+	config.messageCache = make([]map[string]string, len(script))
 
-	for i := range config.transcript {
-		config.transcript[i] = map[string]string{}
+	for i := range config.messageCache {
+		config.messageCache[i] = map[string]string{}
 	}
 
 	// Prepare a partial result to return if we need to abort
@@ -1522,10 +1562,6 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 		CipherSuite:      config.CipherSuite,
 		Actors:           map[string]string{},
 		EncryptHandshake: config.EncryptHandshake,
-
-		// Since this copies the map by reference, it will be updates as
-		// config.transcript is updated below
-		Transcript: config.transcript,
 	}
 
 	actors := script.Actors()
@@ -1536,6 +1572,10 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 	// Run the steps to completion or error
 	for i, step := range script {
 		err := config.RunStep(i, step)
+
+		// Store the transcript before error checking / possible abort
+		result.Transcript = config.transcript
+
 		if err != nil {
 			result.Error = err.Error()
 			result.FailedStep = new(int)
