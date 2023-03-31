@@ -1713,6 +1713,13 @@ func main() {
 	chk("Error marshaling results", err)
 	fmt.Println(string(resultsJSON))
 
+	for _, results := range results.Scripts {
+		for _, result := range results {
+			if result.FailedStep != nil {
+				log.Fatal("Test failed")
+			}
+		}
+	}
 }
 
 func chk(message string, err error) {
