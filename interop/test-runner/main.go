@@ -109,12 +109,14 @@ type GroupContextExtensionsProposalStepParams struct {
 }
 
 type ProposalDescription struct {
-	ProposalType string          `json:"proposalType"`
-	KeyPackage   int             `json:"keyPackage"`
-	Removed      string          `json:"removed"`
-	PskId        int             `json:"pskID"`
-	EpochId      int             `json:"epochID"`
-	Extensions   []*pb.Extension `json:"extensions"`
+	ProposalType      string          `json:"proposalType"`
+	KeyPackage        int             `json:"keyPackage"`
+	Removed           string          `json:"removed"`
+	PskId             int             `json:"pskID"`
+	EpochId           int             `json:"epochID"`
+	Extensions        []*pb.Extension `json:"extensions"`
+	ChangeGroupId     bool            `json:"changeGroupID"`
+	ChangeCipherSuite bool            `json:"changeCipherSuite"`
 }
 
 func (proposalDescription *ProposalDescription) ProposalDescriptionToProto(config *ScriptActorConfig) (*pb.ProposalDescription, error) {
@@ -132,6 +134,17 @@ func (proposalDescription *ProposalDescription) ProposalDescriptionToProto(confi
 		proposalDescProto.EpochId = uint64(proposalDescription.EpochId)
 	case "groupContextExtensions":
 		proposalDescProto.Extensions = proposalDescription.Extensions
+	case "reinit":
+		proposalDescProto.Extensions = proposalDescription.Extensions
+		if proposalDescription.ChangeCipherSuite {
+			err = config.ChangeCipherSuite()
+			if err != nil {
+				return nil, err
+			}
+		}
+		proposalDescProto.CipherSuite = config.CipherSuite
+		proposalDescProto.GroupId, err = config.NewGroupID(proposalDescription.ChangeGroupId)
+
 	default:
 		err = fmt.Errorf("unknown proposal type [%s]", proposalDescription.ProposalType)
 	}
@@ -174,15 +187,16 @@ type UnprotectStepParams struct {
 }
 
 type ReInitStepParams struct {
-	Proposer          string          `json:"proposer"`
-	Committer         string          `json:"committer"`
-	Welcomer          string          `json:"welcomer"`
-	Members           []string        `json:"members"`
-	ChangeCipherSuite bool            `json:"changeCipherSuite"`
-	ChangeGroupID     bool            `json:"changeGroupID"`
-	Extensions        []*pb.Extension `json:"extensions"`
-	ForcePath         bool            `json:"forcePath"`
-	ExternalTree      bool            `json:"externalTree"`
+	Proposer               string          `json:"proposer"`
+	Committer              string          `json:"committer"`
+	Welcomer               string          `json:"welcomer"`
+	Members                []string        `json:"members"`
+	ChangeCipherSuite      bool            `json:"changeCipherSuite"`
+	ChangeGroupID          bool            `json:"changeGroupID"`
+	Extensions             []*pb.Extension `json:"extensions"`
+	ForcePath              bool            `json:"forcePath"`
+	ExternalTree           bool            `json:"externalTree"`
+	ExternalReinitProposal int             `json:"externalReinitProposal"`
 }
 
 type BranchStepParams struct {
@@ -463,6 +477,54 @@ func (config *ScriptActorConfig) GetMessage(index int, key string) ([]byte, erro
 
 func (config *ScriptActorConfig) StoreInteger(index int, key string, integer uint32) {
 	config.messageCache[index][key] = strconv.FormatUint(uint64(integer), 10)
+}
+
+func (config *ScriptActorConfig) NewGroupID(changeId bool) ([]byte, error) {
+	newGroupID, err := config.GetMessage(0, "group_id")
+	if err != nil {
+		return nil, err
+	}
+	if changeId {
+		newGroupID = append(newGroupID, []byte("++")...)
+	}
+	return newGroupID, nil
+}
+
+func (config *ScriptActorConfig) ChangeCipherSuite() error {
+	// Compute the set of ciphersuites supported by all clients
+	var supportedSuites map[uint32]bool
+	for _, client := range config.ActorClients {
+		// Initialize with the first client
+		if supportedSuites == nil {
+			supportedSuites = map[uint32]bool{}
+			for suite := range client.supported {
+				supportedSuites[suite] = true
+			}
+			continue
+		}
+
+		// Then remove suites not supported by other clients
+		for suite := range supportedSuites {
+			if !client.supported[suite] {
+				delete(supportedSuites, suite)
+			}
+		}
+	}
+
+	// Remove the current ciphersuite
+	delete(supportedSuites, config.CipherSuite)
+
+	// Select one of the remaining ones
+	if len(supportedSuites) == 0 {
+		return fmt.Errorf("no remaining supported ciphersuite")
+	}
+
+	for suite := range supportedSuites {
+		config.CipherSuite = suite
+		break
+	}
+
+	return nil
 }
 
 func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
@@ -1099,69 +1161,41 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		// Compute sets of members less the committer and the welcomer
-		notCommitter := map[string]bool{params.Proposer: true, params.Welcomer: true}
-		notWelcomer := map[string]bool{params.Proposer: true, params.Committer: true}
+		notCommitter := map[string]bool{params.Welcomer: true}
+		notWelcomer := map[string]bool{params.Committer: true}
 		for _, member := range params.Members {
 			notCommitter[member] = true
 			notWelcomer[member] = true
+		}
+		if params.Proposer != "" {
+			notCommitter[params.Proposer] = true
+			notWelcomer[params.Proposer] = true
 		}
 
 		delete(notCommitter, params.Committer)
 		delete(notWelcomer, params.Welcomer)
 
 		// Decide on the parameters to send
-		newGroupID, err := config.GetMessage(0, "group_id")
+		newGroupID, err := config.NewGroupID(params.ChangeGroupID)
 		if err != nil {
 			return err
 		}
-		if params.ChangeGroupID {
-			newGroupID = append(newGroupID, []byte("++")...)
-		}
 
-		newCipherSuite := config.CipherSuite
 		if params.ChangeCipherSuite {
-			// Compute the set of ciphersuites supported by all clients
-			var supportedSuites map[uint32]bool
-			for _, client := range config.ActorClients {
-				// Initialize with the first client
-				if supportedSuites == nil {
-					supportedSuites = map[uint32]bool{}
-					for suite := range client.supported {
-						supportedSuites[suite] = true
-					}
-					continue
-				}
-
-				// Then remove suites not supported by other clients
-				for suite := range supportedSuites {
-					if !client.supported[suite] {
-						delete(supportedSuites, suite)
-					}
-				}
+			err = config.ChangeCipherSuite()
+			if err != nil {
+				return err
 			}
-
-			// Remove the current ciphersuite
-			delete(supportedSuites, config.CipherSuite)
-
-			// Select one of the remaining ones
-			if len(supportedSuites) == 0 {
-				return fmt.Errorf("No remaining supported ciphersuite")
-			}
-
-			for suite := range supportedSuites {
-				newCipherSuite = suite
-				break
-			}
-			config.CipherSuite = newCipherSuite
 		}
 
-		// Have the proposer create the Proposal
-		proposal := []byte{}
-		{
+		// Have the proposer create the Proposal or get the external proposal created
+		// earlier
+		var proposal []byte
+		if params.Proposer != "" {
 			client := config.ActorClients[params.Proposer]
 			req := &pb.ReInitProposalRequest{
 				StateId:     config.stateID[params.Proposer],
-				CipherSuite: newCipherSuite,
+				CipherSuite: config.CipherSuite,
 				GroupId:     newGroupID,
 				Extensions:  params.Extensions,
 			}
@@ -1172,6 +1206,11 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			config.Log(params.Proposer, "ReInitProposal", req, resp)
 
 			proposal = resp.Proposal
+		} else {
+			proposal, err = config.GetMessage(params.ExternalReinitProposal, "proposal")
+			if err != nil {
+				return err
+			}
 		}
 
 		// Have the committer commit the Proposal and advance their state
@@ -1713,6 +1752,14 @@ func main() {
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")
 	chk("Error marshaling results", err)
 	fmt.Println(string(resultsJSON))
+
+	for _, results := range results.Scripts {
+		for _, result := range results {
+			if result.FailedStep != nil {
+				log.Fatal("Test failed")
+			}
+		}
+	}
 }
 
 func chk(message string, err error) {
