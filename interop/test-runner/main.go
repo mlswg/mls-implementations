@@ -1581,8 +1581,17 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 			result.FailedStep = new(int)
 			*result.FailedStep = i
 			result.FailedStepJSON = string(step.Raw)
-			return result
+			break
 		}
+	}
+
+	// Release the resources on the clients that were created for this test
+	for actor, stateID := range config.stateID {
+		client := config.ActorClients[actor]
+		req := &pb.FreeRequest{
+			StateId: stateID,
+		}
+		client.rpc.Free(ctx(), req)
 	}
 
 	return result

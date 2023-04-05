@@ -54,6 +54,9 @@ service MLSClient {
   rpc CreateExternalSigner(CreateExternalSignerRequest) returns (CreateExternalSignerResponse) {}
   rpc AddExternalSigner(AddExternalSignerRequest) returns (ProposalResponse) {}
   rpc ExternalSignerProposal(ExternalSignerProposalRequest) returns (ProposalResponse) {}
+
+  // Cleanup
+  rpc Free(FreeRequest) returns (FreeResponse) {}
 }
 
 // rpc Name
@@ -397,3 +400,10 @@ message ExternalSignerProposalRequest{
   bytes ratchet_tree = 4;
   ProposalDescription description = 5;
 }
+
+// rpc Free
+message FreeRequest {
+  uint32 state_id = 1;
+}
+
+message FreeResponse {}
