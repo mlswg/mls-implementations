@@ -1386,6 +1386,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 		}
 
 		// Apply the Welcome at each other member
+		oldStateID := map[string]uint32{}
 		for _, member := range params.Members {
 			client := config.ActorClients[member]
 			req := &pb.HandleBranchRequest{
@@ -1404,7 +1405,22 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 				return fmt.Errorf("Member [%s] failed to agree on epoch authenticator", member)
 			}
 
+			oldStateID[member] = config.stateID[member]
 			config.stateID[member] = resp.StateId
+		}
+
+		// Clean up the old branch state
+		// TODO(RLB): This block should be deleted once we have the ability to test
+		// operations on the old branch.
+		for member, stateID := range oldStateID {
+			client := config.ActorClients[member]
+			req := &pb.FreeRequest{
+				StateId: stateID,
+			}
+			_, err := client.rpc.Free(ctx(), req)
+			if err != nil {
+				return err
+			}
 		}
 
 	case ActionNewMemberAddProposal:
@@ -1591,7 +1607,12 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
 		req := &pb.FreeRequest{
 			StateId: stateID,
 		}
-		client.rpc.Free(ctx(), req)
+		_, err := client.rpc.Free(ctx(), req)
+		if err != nil {
+			result.Error = err.Error()
+			result.FailedStep = new(int)
+			*result.FailedStep = len(script)
+		}
 	}
 
 	return result
