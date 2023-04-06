@@ -1,11 +1,7 @@
 {
   "scripts": {
     "change_ciphersuite": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "externalJoin", "actor": "alice", "joiner": "bob", "members": []},
-      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "diana", "members": ["bob", "charlie"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "eliza", "members": ["bob", "charlie", "diana"]},
+      {"action": "createGroup", "actor": "alice", "members": ["bob", "charlie", "diana", "eliza"]},
       {
         "action": "reinit", 
         "proposer": "alice",
@@ -17,11 +13,7 @@
     ],
     
     "change_group_id": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "externalJoin", "actor": "alice", "joiner": "bob", "members": []},
-      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "diana", "members": ["bob", "charlie"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "eliza", "members": ["bob", "charlie", "diana"]},
+      {"action": "createGroup", "actor": "alice", "members": ["bob", "charlie", "diana", "eliza"]},
       {
         "action": "reinit", 
         "proposer": "alice",
@@ -33,11 +25,7 @@
     ],
     
     "change_extensions": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "externalJoin", "actor": "alice", "joiner": "bob", "members": []},
-      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "diana", "members": ["bob", "charlie"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "eliza", "members": ["bob", "charlie", "diana"]},
+      {"action": "createGroup", "actor": "alice", "members": ["bob", "charlie", "diana", "eliza"]},
       {
         "action": "reinit", 
         "proposer": "alice",
@@ -52,11 +40,7 @@
     ],
     
     "all_same_actor": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "externalJoin", "actor": "alice", "joiner": "bob", "members": []},
-      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "diana", "members": ["bob", "charlie"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "eliza", "members": ["bob", "charlie", "diana"]},
+      {"action": "createGroup", "actor": "alice", "members": ["bob", "charlie", "diana", "eliza"]},
       {
         "action": "reinit", 
         "proposer": "alice",
@@ -68,11 +52,7 @@
     ],
     
     "external_tree": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "externalJoin", "actor": "alice", "joiner": "bob", "members": []},
-      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "diana", "members": ["bob", "charlie"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "eliza", "members": ["bob", "charlie", "diana"]},
+      {"action": "createGroup", "actor": "alice", "members": ["bob", "charlie", "diana", "eliza"]},
       {
         "action": "reinit", 
         "proposer": "alice",
@@ -85,11 +65,7 @@
     ],
     
     "force_path": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "externalJoin", "actor": "alice", "joiner": "bob", "members": []},
-      {"action": "externalJoin", "actor": "alice", "joiner": "charlie", "members": ["bob"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "diana", "members": ["bob", "charlie"]},
-      {"action": "externalJoin", "actor": "alice", "joiner": "eliza", "members": ["bob", "charlie", "diana"]},
+      {"action": "createGroup", "actor": "alice", "members": ["bob", "charlie", "diana", "eliza"]},
       {
         "action": "reinit", 
         "proposer": "alice",

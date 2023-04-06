@@ -68,6 +68,10 @@ type ScriptStep struct {
 	Raw    []byte       `json:"raw"`
 }
 
+type CreateGroupStepParams struct {
+	Members []string `json:"members"`
+}
+
 type JoinGroupStepParams struct {
 	Welcome int `json:"welcome"`
 }
@@ -252,6 +256,18 @@ func (s Script) Actors() []string {
 		}
 
 		actorMap[step.Actor] = true
+
+		if step.Action == ActionCreateGroup {
+			var params CreateGroupStepParams
+			err := json.Unmarshal(step.Raw, &params)
+			if err != nil {
+				continue
+			}
+
+			for _, member := range params.Members {
+				actorMap[member] = true
+			}
+		}
 
 		if step.Action == ActionExternalJoin {
 			var params ExternalJoinStepParams
@@ -530,22 +546,119 @@ func (config *ScriptActorConfig) ChangeCipherSuite() error {
 func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 	switch step.Action {
 	case ActionCreateGroup:
-		client := config.ActorClients[step.Actor]
-		groupID := []byte(uuid.New().String())
-		req := &pb.CreateGroupRequest{
-			GroupId:          groupID,
-			CipherSuite:      config.CipherSuite,
-			EncryptHandshake: config.EncryptHandshake,
-			Identity:         []byte(step.Actor),
-		}
-		resp, err := client.rpc.CreateGroup(ctx(), req)
+		var params CreateGroupStepParams
+		err := json.Unmarshal(step.Raw, &params)
 		if err != nil {
 			return err
 		}
-		config.Log(step.Actor, "CreateGroup", req, resp)
 
-		config.stateID[step.Actor] = resp.StateId
-		config.StoreMessage(index, "group_id", groupID)
+		// Create the group
+		groupID := []byte(uuid.New().String())
+		{
+			client := config.ActorClients[step.Actor]
+			req := &pb.CreateGroupRequest{
+				GroupId:          groupID,
+				CipherSuite:      config.CipherSuite,
+				EncryptHandshake: config.EncryptHandshake,
+				Identity:         []byte(step.Actor),
+			}
+			resp, err := client.rpc.CreateGroup(ctx(), req)
+			if err != nil {
+				return err
+			}
+			config.Log(step.Actor, "CreateGroup", req, resp)
+
+			config.stateID[step.Actor] = resp.StateId
+			config.StoreMessage(index, "group_id", groupID)
+		}
+
+		// If there are no new members to add, we're done
+		if len(params.Members) == 0 {
+			return nil
+		}
+
+		// Get key packages from the joiners
+		keyPackages := make([][]byte, len(params.Members))
+		transactionIDs := make([]uint32, len(params.Members))
+		for i, member := range params.Members {
+			client := config.ActorClients[member]
+			req := &pb.CreateKeyPackageRequest{
+				CipherSuite: config.CipherSuite,
+				Identity:    []byte(member),
+			}
+			resp, err := client.rpc.CreateKeyPackage(ctx(), req)
+			if err != nil {
+				return err
+			}
+			config.Log(member, "CreateKeyPackage", req, resp)
+
+			keyPackages[i] = resp.KeyPackage
+			transactionIDs[i] = resp.TransactionId
+		}
+
+		// Create and consume a Commit with inline Add proposals
+		var welcome []byte
+		var epochAuthenticator []byte
+		{
+			byValue := make([]*pb.ProposalDescription, len(keyPackages))
+			for i, keyPackage := range keyPackages {
+				byValue[i] = &pb.ProposalDescription{
+					ProposalType: []byte("add"),
+					KeyPackage:   keyPackage,
+				}
+			}
+
+			client := config.ActorClients[step.Actor]
+			req := &pb.CommitRequest{
+				StateId: config.stateID[step.Actor],
+				ByValue: byValue,
+			}
+			resp, err := client.rpc.Commit(ctx(), req)
+			if err != nil {
+				return err
+			}
+			config.Log(step.Actor, "Commit", req, resp)
+
+			welcome = resp.Welcome
+		}
+
+		// Handle the commit at the creator
+		{
+			client := config.ActorClients[step.Actor]
+			req := &pb.HandlePendingCommitRequest{
+				StateId: config.stateID[step.Actor],
+			}
+			resp, err := client.rpc.HandlePendingCommit(ctx(), req)
+			if err != nil {
+				return err
+			}
+			config.Log(step.Actor, "HandlePendingCommit", req, resp)
+
+			config.stateID[step.Actor] = resp.StateId
+			epochAuthenticator = resp.EpochAuthenticator
+		}
+
+		// Initialize the joiners
+		for i, member := range params.Members {
+			client := config.ActorClients[member]
+			req := &pb.JoinGroupRequest{
+				TransactionId:    transactionIDs[i],
+				Welcome:          welcome,
+				EncryptHandshake: config.EncryptHandshake,
+				Identity:         []byte(member),
+			}
+			resp, err := client.rpc.JoinGroup(ctx(), req)
+			if err != nil {
+				return err
+			}
+			config.Log(member, "JoinGroup", req, resp)
+
+			if !bytes.Equal(resp.EpochAuthenticator, epochAuthenticator) {
+				return fmt.Errorf("Joiner [%s] failed to agree on epoch authenticator", member)
+			}
+
+			config.stateID[member] = resp.StateId
+		}
 
 	case ActionCreateKeyPackage:
 		client := config.ActorClients[step.Actor]
@@ -561,9 +674,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.transactionID[step.Actor] = resp.TransactionId
 		config.StoreMessage(index, "key_package", resp.KeyPackage)
-		config.StoreMessage(index, "init_priv", resp.InitPriv)
-		config.StoreMessage(index, "encryption_priv", resp.EncryptionPriv)
-		config.StoreMessage(index, "signature_priv", resp.SignaturePriv)
 
 	case ActionJoinGroup:
 		client := config.ActorClients[step.Actor]
@@ -1686,6 +1796,7 @@ var (
 	privateOpt bool
 	publicOpt  bool
 	failFast   bool
+	quiet      bool
 )
 
 func init() {
@@ -1696,6 +1807,7 @@ func init() {
 	flag.BoolVar(&privateOpt, "private", false, "only run tests with handshake messages as PrivateMessage")
 	flag.BoolVar(&publicOpt, "public", false, "only run tests with handshake messages as PublicMessage")
 	flag.BoolVar(&failFast, "fail-fast", false, "abort after the first failure")
+	flag.BoolVar(&quiet, "quiet", false, "don't print the results")
 	flag.Parse()
 }
 
@@ -1751,7 +1863,10 @@ func main() {
 
 	resultsJSON, err := json.MarshalIndent(results, "", "  ")
 	chk("Error marshaling results", err)
-	fmt.Println(string(resultsJSON))
+
+	if !quiet {
+		fmt.Println(string(resultsJSON))
+	}
 
 	for _, results := range results.Scripts {
 		for _, result := range results {

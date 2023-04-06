@@ -23,14 +23,7 @@
     ],
 
     "with_more_members": [
-      {"action": "createGroup", "actor": "alice"},
-      {"action": "createKeyPackage", "actor": "bob"},
-      {"action": "createKeyPackage", "actor": "charlie"},
-      {"action": "createKeyPackage", "actor": "diana"},
-      {"action": "addProposal", "actor": "alice", "keyPackage": 1},
-      {"action": "addProposal", "actor": "alice", "keyPackage": 2},
-      {"action": "addProposal", "actor": "alice", "keyPackage": 3},
-      {"action": "fullCommit", "actor": "alice", "byReference": [4, 5, 6], "joiners": ["bob", "charlie", "diana"]},
+      {"action": "createGroup", "actor": "alice", "members": ["bob", "charlie", "diana"]},
       {"action": "externalJoin", "actor": "diana", "joiner": "ellen", "members": ["alice", "bob", "charlie"]}
     ]
   }
