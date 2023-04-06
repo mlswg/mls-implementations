@@ -572,7 +572,7 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			config.StoreMessage(index, "group_id", groupID)
 		}
 
-		// If there are now members to add, we're done
+		// If there are no new members to add, we're done
 		if len(params.Members) == 0 {
 			return nil
 		}
@@ -598,7 +598,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		// Create and consume a Commit with inline Add proposals
 		var welcome []byte
-		var ratchetTree []byte
 		var epochAuthenticator []byte
 		{
 			byValue := make([]*pb.ProposalDescription, len(keyPackages))
@@ -621,7 +620,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			config.Log(step.Actor, "Commit", req, resp)
 
 			welcome = resp.Welcome
-			ratchetTree = resp.RatchetTree
 		}
 
 		// Handle the commit at the creator
@@ -646,7 +644,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 			req := &pb.JoinGroupRequest{
 				TransactionId:    transactionIDs[i],
 				Welcome:          welcome,
-				RatchetTree:      ratchetTree,
 				EncryptHandshake: config.EncryptHandshake,
 				Identity:         []byte(member),
 			}
@@ -677,9 +674,6 @@ func (config *ScriptActorConfig) RunStep(index int, step ScriptStep) error {
 
 		config.transactionID[step.Actor] = resp.TransactionId
 		config.StoreMessage(index, "key_package", resp.KeyPackage)
-		config.StoreMessage(index, "init_priv", resp.InitPriv)
-		config.StoreMessage(index, "encryption_priv", resp.EncryptionPriv)
-		config.StoreMessage(index, "signature_priv", resp.SignaturePriv)
 
 	case ActionJoinGroup:
 		client := config.ActorClients[step.Actor]
