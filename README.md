@@ -1,17 +1,10 @@
 This is the working area for MLS implementations.
 
-## Upcoming events
-
-### MLS interim
-Date TBD
-
 ## Communication
 
 All important issues relating to MLS should be discussed on the [MLS mailing list](https://www.ietf.org/mailman/listinfo/mls).
 
-For more real-time communication specific to implementation details, you can join the [MLS implementations](https://app.wire.com/join/?key=3tL-NJOoCKZlDXNU1H2c&code=LmQUmkNOwX56_dnCH3Ut) Wire channel.
-
-For general discussions of the MLS specifications (as opposed to implementations), please use the [Public MLS Discussions](https://app.wire.com/join/?key=qmrRRfaklMRm8UsYSqpA&code=R5oqIFf8K-BX_c7Jye3Q) wire channel.
+For more real-time communication specific to implementation details, you can join the `mls-interop` channel on [ietf.slack.com](https://ietf.slack.com).
 
 ## Current material
 
@@ -19,4 +12,4 @@ For general discussions of the MLS specifications (as opposed to implementations
 
 [Test vectors](test-vectors.md)
 
-[Status of implementations against test vectors](https://docs.google.com/spreadsheets/d/1SBIpl6NAr-HbHeVcOiNtNfAAFqTEQX4dK7_BrgEF1xc/edit#gid=0)
+[Interop status of MLS implementations](https://docs.google.com/spreadsheets/d/1mfEUNYJvInVLRv06sOE1dIpxQ7QnH1nOWwbYN05SyR4/edit?pli=1#gid=0)
