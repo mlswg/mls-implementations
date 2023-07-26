@@ -445,23 +445,29 @@ Verification:
 Format:
 ```text
 {
+  "cipher_suite": /* uint16 */,
+
   // Chosen by the generator
   "tree_before": /* hex-encoded TLS-serialized ratchet tree */,
   "proposal": /* hex-encoded TLS-serialized Proposal */,
   "proposal_sender": /* uint32 */,
 
   // Computed values
+  "tree_hash_before": /* hex-encoded binary data */,
   "tree_after": /* hex-encoded TLS-serialized ratchet tree */,
+  "tree_hash_after": /* hex-encoded binary data */,
 }
 ```
 
 The type of `proposal` is either `add`, `remove` or `update`. 
 
 Verification:
+* Verify that the tree hash of `tree_before` matches `tree_hash_before`.
 * Compute `candidate_tree_after` by applying `proposal` sent by the member
   with index `proposal_sender` to `tree_before`.
 * Verify that serialized `candidate_tree_after` matches the provided `tree_after`
   value.
+* Verify that the tree hash of `candidate_tree_after` matches `tree_hash_after`.
 
 ## Tree Validation
 
