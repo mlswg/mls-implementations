@@ -741,3 +741,29 @@ Verification:
     incorporated by reference in the Commit
   * Verify that the locally computed `epoch_authenticator` value is equal to the
     `epoch_authenticator` value in the epoch object
+
+
+## Deserialization
+Format:
+``` text
+[
+  {
+    "serialized_vec": /* hex-encoded binary data */,
+    "values": [
+      /* hex-encoded binary data */,
+      /* or null if the Value was not given */
+    ]
+  },
+  ...
+]
+```
+
+This Test contains a Vector of Optional Vectors.
+All Values used in the Serialized Vector are contained in the `values` Array and can either be `null` or hex-enocoded binary data.
+Basically it is something like `(optional<V>)<V>`
+
+Verification:
+* Deserialize the `serialized_vec`
+* for each Optional Vector `i`
+  * if it's present check that its value matches the value at `values[i]`
+  * if it's not present check that `values[i]` is `null`
