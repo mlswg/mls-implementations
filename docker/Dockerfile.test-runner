@@ -1,0 +1,30 @@
+# This Dockerfile MUST be built with the build context set to be the root of the
+# mls-implementations repo.
+#
+# > docker build -f docker/test-runner/Dockerfile .
+#
+# Once this is built, you can run
+FROM ubuntu:latest
+
+RUN apt-get -y update && apt-get -y install git make golang protoc-gen-go
+
+RUN useradd -m user
+USER user
+WORKDIR /home/user
+
+# Set up Go prerequisites
+ENV GOPATH=/home/user/go
+ENV PATH=$PATH:$GOPATH/bin
+
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+# Import this repo into the container
+COPY --chown=user . mls-implementations
+
+# Build the test runner
+WORKDIR mls-implementations/interop/test-runner
+RUN go mod tidy -e
+RUN go build
+
+ENTRYPOINT [ "./test-runner" ]

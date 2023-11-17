@@ -1,0 +1,28 @@
+FROM ubuntu:latest
+
+RUN apt-get -y update && apt-get -y install git make cmake clang curl zip pkg-config ninja-build
+
+RUN useradd -m user
+USER user
+WORKDIR /home/user
+
+# Clone MLSpp
+RUN git clone https://github.com/cisco/mlspp.git
+WORKDIR mlspp
+
+# Set up vcpkg
+ENV CMAKE_GENERATOR=Ninja
+ENV CMAKE_TOOLCHAIN_FILE=/home/user/mlspp/vcpkg/scripts/buildsystems/vcpkg.cmake
+ENV VCPKG_FORCE_SYSTEM_BINARIES=1
+RUN git submodule update --init --recursive
+RUN ./vcpkg/bootstrap-vcpkg.sh
+
+# Build MLSpp
+RUN make dev
+RUN make everything
+
+# Build the MLSpp interop harness
+WORKDIR cmd/interop
+RUN make
+
+ENTRYPOINT [ "./build/mlspp_client" ]

@@ -1,0 +1,16 @@
+---
+name: mls-interop
+services:
+  mlspp:
+    build: 
+      dockerfile: ./Dockerfile.mlspp
+    ports:
+      - 50052:${MLSPP_PORT:-50052}
+    command: -live ${MLSPP_PORT:-50052}
+  test-runner:
+    build:
+      # Note that the context must be '..' so that the `interop` directory can
+      # be copied into the container.
+      context: ..
+      dockerfile: ./docker/Dockerfile.test-runner
+    command: -fail-fast -client mlspp:${MLSPP_PORT:-50052} -config=../configs/${CONFIG_RUN:-welcome_join.json}
