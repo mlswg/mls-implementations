@@ -21,10 +21,18 @@ RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 # Import this repo into the container
 COPY --chown=user . mls-implementations
+ 
+# Generate the Go interface from the proto files
+WORKDIR mls-implementations/interop
+RUN protoc --go_out=proto \
+           --go_opt=paths=source_relative \
+           --go-grpc_out=proto \
+           --go-grpc_opt=paths=source_relative \
+           -I proto \
+           mls_client.proto
 
 # Build the test runner
-WORKDIR mls-implementations/interop/test-runner
-RUN go mod tidy -e
+WORKDIR test-runner
 RUN go build
 
 ENTRYPOINT [ "./test-runner" ]
