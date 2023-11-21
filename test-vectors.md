@@ -743,27 +743,27 @@ Verification:
     `epoch_authenticator` value in the epoch object
 
 
-## Deserialization
+
+## Vector Deserialization
+
+Parameters:
+* Header for variable length encoded Vector
+* The encoded length
+
+
 Format:
 ``` text
 [
   {
-    "serialized_vec": /* hex-encoded binary data */,
-    "values": [
-      /* hex-encoded binary data */,
-      /* or null if the Value was not given */
-    ]
+    "vlbytes_header": /* hex-encoded binary data */,
+    "length": /* integer for the encoded size */
   },
   ...
 ]
 ```
 
-This Test contains a Vector of Optional Vectors.
-All Values used in the Serialized Vector are contained in the `values` Array and can either be `null` or hex-enocoded binary data.
-Basically it is something like `(optional<V>)<V>`
+This Test contains a List of Serialized Variable Length Headers (`vlbytes_header`)  and a length.
 
 Verification:
-* Deserialize the `serialized_vec`
-* for each Optional Vector `i`
-  * if it's present check that its value matches the value at `values[i]`
-  * if it's not present check that `values[i]` is `null`
+* Decode the `vlbytes_header`
+* Verify that the decoded length matches the given `length`
