@@ -741,3 +741,29 @@ Verification:
     incorporated by reference in the Commit
   * Verify that the locally computed `epoch_authenticator` value is equal to the
     `epoch_authenticator` value in the epoch object
+
+
+
+## Vector Deserialization
+
+Parameters:
+* Header for variable length encoded Vector
+* The encoded length
+
+
+Format:
+``` text
+[
+  {
+    "vlbytes_header": /* hex-encoded binary data */,
+    "length": /* integer for the encoded size */
+  },
+  ...
+]
+```
+
+This Test contains a List of Serialized Variable Length Headers (`vlbytes_header`)  and a length.
+
+Verification:
+* Decode the `vlbytes_header`
+* Verify that the decoded length matches the given `length`
