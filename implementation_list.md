@@ -3,6 +3,7 @@
  - MLSpp (C++) [https://github.com/cisco/mlspp](https://github.com/cisco/mlspp) (Status: RFC)
  - OpenMLS (Rust) [https://github.com/openmls/openmls](https://github.com/openmls/openmls) (Status: RFC)
  - [Wickr](https://wickr.com/) proprietary implementation (Rust) (Status: RFC)
+ - mls-kotlin (Kotlin) [https://github.com/Traderjoe95/mls-kotlin](https://github.com/Traderjoe95/mls-kotlin) (Status: RFC)
  - [RingCentral](https://www.ringcentral.com/) proprietary implementation (C++) (Status: draft-11; RFC in progress)
  - `MLS*` (F*) (Status: RFC in progress)
  - [BouncyCastle](https://github.com/bcgit/bc-java/issues/1317) (Java) (Status: RFC in progress)
