@@ -6,7 +6,7 @@
  - mls-rs (Rust) [https://github.com/awslabs/mls-rs] (Status: RFC)
  - [RingCentral](https://www.ringcentral.com/) proprietary implementation (C++) (Status: draft-11; RFC in progress)
  - `MLS*` (F*) (Status: RFC in progress)
- - [BouncyCastle](https://github.com/bcgit/bc-java/issues/1317) (Java) (Status: RFC in progress)
+ - BouncyCastle (Java) [https://github.com/bcgit/bc-java](https://github.com/bcgit/bc-java) (Status: RFC)
  - [go-mls](https://git.sr.ht/~emersion/go-mls) (Go) (Status: RFC in progress)
 
 ## Older / out of date links
