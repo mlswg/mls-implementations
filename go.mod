@@ -1,6 +1,6 @@
 module github.com/mlswg/mls-implementations
 
-go 1.16
+go 1.22
 
 require (
 	github.com/google/uuid v1.1.2
