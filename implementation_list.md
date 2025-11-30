@@ -8,6 +8,7 @@
  - `MLS*` (F*) (Status: RFC in progress)
  - BouncyCastle (Java) [https://github.com/bcgit/bc-java](https://github.com/bcgit/bc-java) (Status: RFC)
  - [go-mls](https://git.sr.ht/~emersion/go-mls) (Go) (Status: RFC in progress)
+ - [ts-mls](https://github.com/LukaJCB/ts-mls) (Typescript) (Status: RFC)
  - [mls_stuff](https://github.com/Aurvandill/mls_stuff) (Python) (Status: RFC in progress)
 
 ## Older / out of date links
