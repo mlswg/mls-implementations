@@ -8,7 +8,7 @@ For more real-time communication specific to implementation details, you can joi
 
 ## Current material
 
-[List of existing implementations](https://github.com/mlswg/mls-implementations/blob/master/implementation_list.md)
+[List of existing implementations](implementation_list.md)
 
 [Test vectors](test-vectors.md)
 
