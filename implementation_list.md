@@ -11,6 +11,7 @@
  - [ts-mls](https://github.com/LukaJCB/ts-mls) (Typescript) (Status: RFC)
  - [mls_stuff](https://github.com/Aurvandill/mls_stuff) (Python) (Status: RFC in progress)
  - [mls-go](https://github.com/thomas-vilte/mls-go) (Go) (Status: RFC)
+ - [melos](https://github.com/sylph01/melos) (Ruby) (Status: RFC)
 
 ## Older / out of date links
 
