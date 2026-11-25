@@ -767,3 +767,78 @@ This Test contains a List of Serialized Variable Length Headers (`vlbytes_header
 Verification:
 * Decode the `vlbytes_header`
 * Verify that the decoded length matches the given `length`
+
+## Targeted Messages
+
+These vectors test the receiver side of
+[draft-ietf-mls-targeted-messages](https://datatracker.ietf.org/doc/draft-ietf-mls-targeted-messages/),
+with the HPKE binding of draft -02 (`TargetedMessageContextData` as the HPKE
+`info` context, `authenticated_data` as the HPKE `aad`). The HPKE encapsulation
+is randomized, so sender-side operations are not reproducible from these
+inputs; test a sender by round-tripping against a receiver.
+
+Parameters:
+* Ciphersuite
+* Application data and padding length, including a ciphertext shorter than,
+  equal to, and longer than `KDF.Nh`
+* For invalid vectors, the Recipient Validation step at which the message is
+  rejected
+
+Format:
+
+``` text
+{
+  "cipher_suite": /* uint16 */,
+  "description": /* string */,
+
+  "group_id": /* hex-encoded binary data */,
+  "epoch": /* uint64 */,
+  "exporter_secret": /* hex-encoded binary data */,
+  "sender_leaf_index": /* uint32 */,
+  "sender_leaf_node": /* serialized LeafNode */,
+  "recipient_leaf_index": /* uint32 */,
+  "recipient_encryption_priv": /* hex-encoded binary data */,
+
+  "targeted_message": /* serialized MLSMessage(TargetedMessage) */,
+  "valid": /* boolean */,
+  "failure": /* optional<string> */,
+  "authenticated_data": /* hex-encoded binary data */,
+  "application_data": /* hex-encoded binary data */,
+  "padding_length": /* integer */
+}
+```
+
+The group, epoch, exporter secret, leaf indices, sender leaf node and recipient
+HPKE private key describe the recipient's state. The ratchet tree of `epoch`
+has exactly two non-blank leaves, at `sender_leaf_index` and
+`recipient_leaf_index`, and the recipient retains no key material for past
+epochs. For an invalid vector, `application_data` is empty, `padding_length` is
+0, and `authenticated_data` is informational.
+
+`failure` is `null` for a valid vector. Otherwise it names the first step of
+the draft's Recipient Validation that fails:
+
+| `failure` | Step |
+|---|---|
+| `decode` | `targeted_message` does not decode as an `MLSMessage` carrying a `TargetedMessage` |
+| `group_id` | `group_id` is not the recipient's group |
+| `epoch` | `epoch` is not the recipient's epoch |
+| `recipient_leaf_index` | `recipient_leaf_index` is not the recipient's leaf |
+| `sender_data` | `encrypted_sender_auth_data` fails to decrypt or decode |
+| `sender_leaf_index` | the decrypted `sender_leaf_index` names a blank leaf |
+| `signature` | the signature over `TargetedMessageTBS` fails to verify |
+| `ciphertext` | HPKE decryption of `ciphertext` fails |
+| `padding` | the decrypted padding contains a non-zero byte |
+
+A flipped byte in the first `KDF.Nh` bytes of `ciphertext` changes the sender
+data key and nonce, so it fails at `sender_data`; a flipped byte after them
+fails at `signature`.
+
+Verification:
+* Perform the draft's Recipient Validation steps, in order, on
+  `targeted_message`, using the recipient state above
+* If `valid` is true, verify that all steps succeed, that the decrypted
+  application data equals `application_data`, and that the padding has length
+  `padding_length`
+* If `valid` is false, verify that the message is rejected at the step named by
+  `failure`
